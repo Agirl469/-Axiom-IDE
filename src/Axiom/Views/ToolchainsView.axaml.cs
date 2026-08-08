@@ -6,7 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Axiom.Models;
 using Axiom.Services;
-
+using System;
 namespace Axiom.Views;
 
 public partial class ToolchainsView : UserControl
@@ -14,12 +14,26 @@ public partial class ToolchainsView : UserControl
     private readonly ToolchainService _toolchains = new();
     private readonly PlatformService _platform = new();
     private readonly ProcessService _process = new();
+    private readonly TextBlock _platformText;
+    private readonly StackPanel _toolchainList;
 
     public ToolchainsView()
     {
         AvaloniaXamlLoader.Load(this);
-        PlatformText.Text = $"{_platform.PlatformName} · package manager: {_platform.LinuxPackageManager}";
-        AttachedToVisualTree += async (_, _) => await RefreshAsync();
+
+        _platformText = this.FindControl<TextBlock>("PlatformText")
+            ?? throw new InvalidOperationException(
+                "PlatformText was not found in ToolchainsView.axaml.");
+
+        _toolchainList = this.FindControl<StackPanel>("ToolchainList")
+            ?? throw new InvalidOperationException(
+                "ToolchainList was not found in ToolchainsView.axaml.");
+
+        _platformText.Text =
+            $"{_platform.PlatformName} · package manager: {_platform.LinuxPackageManager}";
+
+        AttachedToVisualTree += async (_, _) =>
+            await RefreshAsync();
     }
 
     private async void Scan_Click(object? sender, RoutedEventArgs e)
@@ -29,14 +43,24 @@ public partial class ToolchainsView : UserControl
 
     private async Task RefreshAsync()
     {
-        ToolchainList.Children.Clear();
-        ToolchainList.Children.Add(new TextBlock { Text = "Checking installed tools...", Classes = { "muted" } });
+        _toolchainList.Children.Clear();
+
+        _toolchainList.Children.Add(
+            new TextBlock
+            {
+                Text = "Checking installed tools...",
+                Classes = { "muted" }
+            });
 
         var statuses = await _toolchains.ScanAsync();
-        ToolchainList.Children.Clear();
+
+        _toolchainList.Children.Clear();
 
         foreach (var status in statuses)
-            ToolchainList.Children.Add(CreateToolchainRow(status));
+        {
+            _toolchainList.Children.Add(
+                CreateToolchainRow(status));
+        }
     }
 
     private Control CreateToolchainRow(ToolchainStatus status)

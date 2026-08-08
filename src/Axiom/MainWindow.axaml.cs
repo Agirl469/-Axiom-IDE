@@ -1,10 +1,9 @@
-using System;
-using System.Threading.Tasks;
-
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-
+using Avalonia.Markup.Xaml;
 using Axiom.Views;
+using System;
+using System.Threading.Tasks;
 
 namespace Axiom;
 
@@ -12,15 +11,18 @@ public partial class MainWindow : Window
 {
     private StartPageView _startPage = null!;
     private ToolchainsView? _toolchains;
+    private readonly ContentControl _pageHost;
 
     public MainWindow()
     {
-        InitializeComponent();
+        AvaloniaXamlLoader.Load(this);
+
+        _pageHost = this.FindControl<ContentControl>("PageHost")
+            ?? throw new InvalidOperationException("PageHost was not found.");
 
         CreateStartPage();
         ShowStartPage();
     }
-
     private void CreateStartPage()
     {
         _startPage = new StartPageView();
@@ -32,14 +34,14 @@ public partial class MainWindow : Window
 
     private void ShowStartPage()
     {
-        PageHost.Content = _startPage;
+        _pageHost.Content = _startPage;
     }
 
     private void ShowToolchains()
     {
         _toolchains ??= new ToolchainsView();
 
-        PageHost.Content = _toolchains;
+        _pageHost.Content = _toolchains;
     }
 
     private void Toolchains_Click(object? sender, RoutedEventArgs e)
