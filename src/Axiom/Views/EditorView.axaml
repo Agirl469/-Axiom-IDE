@@ -13,12 +13,81 @@
       </Grid>
     </Border>
 
-    <Border Grid.Row="1" Grid.Column="0" Background="#1B1B1E" BorderBrush="#303036" BorderThickness="0,0,1,0">
-      <Grid RowDefinitions="Auto,*">
-        <TextBlock Text="PROJECT" FontSize="12" FontWeight="SemiBold" Margin="12,10,12,8" />
-        <ListBox x:Name="FileList" Grid.Row="1" SelectionChanged="FileList_SelectionChanged" />
-      </Grid>
-    </Border>
+	  <Border Grid.Row="1"
+		  Grid.Column="0"
+		  Background="#1B1B1E"
+		  BorderBrush="#303036"
+		  BorderThickness="0,0,1,0">
+
+		  <Grid RowDefinitions="Auto,Auto,*">
+
+			  <TextBlock
+				  Text="PROJECT"
+				  FontSize="12"
+				  FontWeight="SemiBold"
+				  Margin="12,10,12,6" />
+
+			  <StackPanel
+				  Grid.Row="1"
+				  Orientation="Horizontal"
+				  Spacing="5"
+				  Margin="8,0,8,8">
+
+				  <Button
+					  Content="+ File"
+					  Click="NewFile_Click" />
+
+				  <Button
+					  Content="+ Folder"
+					  Click="NewFolder_Click" />
+
+				  <Button
+					  Content="↻"
+					  ToolTip.Tip="Refresh"
+					  Click="RefreshTree_Click" />
+
+			  </StackPanel>
+
+			  <TreeView
+				  x:Name="ProjectTree"
+				  Grid.Row="2"
+				  DoubleTapped="ProjectTree_DoubleTapped">
+
+				  <TreeView.ContextMenu>
+					  <ContextMenu>
+
+						  <MenuItem
+							  Header="New File"
+							  Click="NewFile_Click" />
+
+						  <MenuItem
+							  Header="New Folder"
+							  Click="NewFolder_Click" />
+
+						  <Separator />
+
+						  <MenuItem
+							  Header="Rename"
+							  Click="RenameItem_Click" />
+
+						  <MenuItem
+							  Header="Delete"
+							  Click="DeleteItem_Click" />
+
+						  <Separator />
+
+						  <MenuItem
+							  Header="Refresh"
+							  Click="RefreshTree_Click" />
+
+					  </ContextMenu>
+				  </TreeView.ContextMenu>
+
+			  </TreeView>
+
+		  </Grid>
+
+	  </Border>
 
 	  <Grid Grid.Row="1"
 		  Grid.Column="1"
@@ -55,7 +124,10 @@
 			  TextChanged="EditorBox_TextChanged"
 			  KeyDown="EditorBox_KeyDown"
 			  ScrollViewer.HorizontalScrollBarVisibility="Auto"
-			  ScrollViewer.VerticalScrollBarVisibility="Auto" />
+			  ScrollViewer.VerticalScrollBarVisibility="Auto" 
+			  Background="{DynamicResource EditorBackground}"
+		      Foreground="{DynamicResource EditorForeground}"
+				SelectionBrush="{DynamicResource EditorSelection}"/>
 
 	  </Grid>
 

@@ -16,8 +16,8 @@ public partial class EditorView : UserControl
     private readonly ProcessService _process = new();
     private readonly string _root;
     private AxiomProject? _project;
-   
-    private readonly ListBox _fileList;
+
+    private readonly TreeView _projectTree;
     private readonly TextBlock _projectKindText;
     private readonly StackPanel _tabBar;
 
@@ -33,9 +33,9 @@ public partial class EditorView : UserControl
 
         AvaloniaXamlLoader.Load(this);
 
-        _fileList = this.FindControl<ListBox>("FileList")
+        _projectTree = this.FindControl<TreeView>("ProjectTree")
             ?? throw new InvalidOperationException(
-                "FileList was not found.");
+                "ProjectTree was not found.");
 
         _projectKindText =
             this.FindControl<TextBlock>("ProjectKindText")
@@ -73,11 +73,7 @@ public partial class EditorView : UserControl
         var files =
             _projects.GetSourceFiles(_root).ToList();
 
-        _fileList.ItemsSource =
-            files
-                .Select(path =>
-                    new ProjectFileItem(_root, path))
-                .ToList();
+        RefreshProjectTree();
 
         var title =
             _project?.Name
@@ -131,14 +127,532 @@ public partial class EditorView : UserControl
             e.Handled = true;
         }
     }
-    private async void FileList_SelectionChanged(
-    object? sender,
-    SelectionChangedEventArgs e)
+    private void RefreshProjectTree()
     {
-        if (_fileList.SelectedItem is ProjectFileItem item)
-            await OpenFileAsync(item.FullPath);
+        var rootItem = CreateTreeItem(_root, true);
+
+        _projectTree.ItemsSource =
+            new[] { rootItem };
     }
 
+    private TreeViewItem CreateTreeItem(
+    string path,
+    bool isRoot = false)
+    {
+        var isDirectory = Directory.Exists(path);
+
+        var item = new TreeViewItem
+        {
+            Header = isRoot
+                ? Path.GetFileName(
+                    Path.GetFullPath(path)
+                        .TrimEnd(
+                            Path.DirectorySeparatorChar,
+                            Path.AltDirectorySeparatorChar))
+                : Path.GetFileName(path),
+
+            Tag = path,
+            IsExpanded = isRoot
+        };
+
+        if (!isDirectory)
+            return item;
+
+        try
+        {
+            var entries =
+                Directory
+                    .EnumerateFileSystemEntries(path)
+                    .Where(entry => !ShouldHideEntry(entry))
+                    .OrderByDescending(Directory.Exists)
+                    .ThenBy(
+                        entry => Path.GetFileName(entry),
+                        StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in entries)
+            {
+                item.Items.Add(
+                    CreateTreeItem(entry));
+            }
+        }
+        catch
+        {
+            // Leave unreadable directories empty.
+        }
+
+        return item;
+    }
+
+    private static bool ShouldHideEntry(string path)
+    {
+        var name = Path.GetFileName(path);
+
+        return name is
+            ".axiom" or
+            ".git" or
+            "bin" or
+            "obj";
+    }
+    private string? GetSelectedPath()
+    {
+        if (_projectTree.SelectedItem
+            is not TreeViewItem item)
+        {
+            return null;
+        }
+
+        return item.Tag as string;
+    }
+    private async void NewFile_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        var directory =
+            GetTargetDirectory();
+
+        var name =
+            await AskForNameAsync(
+                "New File",
+                "File name",
+                "newfile.txt");
+
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        if (Path.GetFileName(name) != name)
+        {
+            _outputBox.Text =
+                "Enter a file name, not a full path.";
+
+            return;
+        }
+
+        var path =
+            Path.Combine(directory, name);
+
+        if (File.Exists(path))
+        {
+            _outputBox.Text =
+                $"'{name}' already exists.";
+
+            return;
+        }
+
+        await File.WriteAllTextAsync(
+            path,
+            string.Empty);
+
+        RefreshProjectTree();
+
+        await OpenFileAsync(path);
+    }
+    private string GetTargetDirectory()
+    {
+        var selected = GetSelectedPath();
+
+        if (string.IsNullOrWhiteSpace(selected))
+            return _root;
+
+        if (Directory.Exists(selected))
+            return selected;
+
+        return Path.GetDirectoryName(selected)
+            ?? _root;
+    }
+
+    private async void DeleteItem_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        var path = GetSelectedPath();
+
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        if (Path.GetFullPath(path) ==
+            Path.GetFullPath(_root))
+        {
+            _outputBox.Text =
+                "The project root cannot be deleted from Axiom.";
+
+            return;
+        }
+
+        var confirmed =
+            await ConfirmAsync(
+                $"Delete '{Path.GetFileName(path)}'?");
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+
+                var tab =
+                    _tabs.FirstOrDefault(
+                        item =>
+                            string.Equals(
+                                item.FilePath,
+                                path,
+                                StringComparison.OrdinalIgnoreCase));
+
+                if (tab is not null)
+                    await CloseDeletedTabAsync(tab);
+            }
+            else if (Directory.Exists(path))
+            {
+                Directory.Delete(
+                    path,
+                    true);
+            }
+
+            RefreshProjectTree();
+        }
+        catch (Exception ex)
+        {
+            _outputBox.Text =
+                $"Delete failed: {ex.Message}";
+        }
+    }
+
+    private void RefreshTree_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        RefreshProjectTree();
+    }
+
+
+    private async Task<string?> AskForNameAsync(
+    string title,
+    string label,
+    string initialValue)
+    {
+        var owner =
+            TopLevel.GetTopLevel(this)
+            as Window;
+
+        if (owner is null)
+            return null;
+
+        var input = new TextBox
+        {
+            Text = initialValue,
+            MinWidth = 320
+        };
+
+        var dialog =
+            new Window
+            {
+                Title = title,
+                Width = 400,
+                Height = 180,
+                CanResize = false,
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner
+            };
+
+        var create =
+            new Button
+            {
+                Content = "OK",
+                MinWidth = 75
+            };
+
+        var cancel =
+            new Button
+            {
+                Content = "Cancel",
+                MinWidth = 75
+            };
+
+        create.Click += (_, _) =>
+        {
+            dialog.Close(
+                input.Text?.Trim());
+        };
+
+        cancel.Click += (_, _) =>
+        {
+            dialog.Close(null);
+        };
+
+        dialog.Content =
+            new StackPanel
+            {
+                Margin = new Thickness(18),
+                Spacing = 10,
+
+                Children =
+                {
+                new TextBlock
+                {
+                    Text = label
+                },
+
+                input,
+
+                new StackPanel
+                {
+                    Orientation =
+                        Orientation.Horizontal,
+
+                    HorizontalAlignment =
+                        HorizontalAlignment.Right,
+
+                    Spacing = 8,
+
+                    Children =
+                    {
+                        cancel,
+                        create
+                    }
+                }
+                }
+            };
+
+        return await dialog
+            .ShowDialog<string?>(owner);
+    }
+
+
+    private async Task<bool> ConfirmAsync(
+    string message)
+    {
+        var owner =
+            TopLevel.GetTopLevel(this)
+            as Window;
+
+        if (owner is null)
+            return false;
+
+        var dialog =
+            new Window
+            {
+                Title = "Axiom",
+                Width = 380,
+                Height = 160,
+                CanResize = false,
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner
+            };
+
+        var yes =
+            new Button
+            {
+                Content = "Delete",
+                MinWidth = 80
+            };
+
+        var no =
+            new Button
+            {
+                Content = "Cancel",
+                MinWidth = 80
+            };
+
+        yes.Click += (_, _) =>
+            dialog.Close(true);
+
+        no.Click += (_, _) =>
+            dialog.Close(false);
+
+        dialog.Content =
+            new StackPanel
+            {
+                Margin = new Thickness(18),
+                Spacing = 14,
+
+                Children =
+                {
+                new TextBlock
+                {
+                    Text = message,
+                    TextWrapping =
+                        Avalonia.Media.TextWrapping.Wrap
+                },
+
+                new StackPanel
+                {
+                    Orientation =
+                        Orientation.Horizontal,
+
+                    HorizontalAlignment =
+                        HorizontalAlignment.Right,
+
+                    Spacing = 8,
+
+                    Children =
+                    {
+                        no,
+                        yes
+                    }
+                }
+                }
+            };
+
+        return await dialog
+            .ShowDialog<bool>(owner);
+    }
+
+
+
+
+    private async Task CloseDeletedTabAsync(
+    EditorTab tab)
+    {
+        var index =
+            _tabs.IndexOf(tab);
+
+        _tabs.Remove(tab);
+
+        if (ReferenceEquals(
+            _activeTab,
+            tab))
+        {
+            _activeTab = null;
+
+            _loadingEditorText = true;
+            _editorBox.Text = string.Empty;
+            _loadingEditorText = false;
+
+            if (_tabs.Count > 0)
+            {
+                var next =
+                    Math.Clamp(
+                        index,
+                        0,
+                        _tabs.Count - 1);
+
+                ActivateTab(
+                    _tabs[next]);
+            }
+        }
+
+        RefreshTabBar();
+
+        await Task.CompletedTask;
+    }
+
+    private async void RenameItem_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        var oldPath = GetSelectedPath();
+
+        if (string.IsNullOrWhiteSpace(oldPath))
+            return;
+
+        if (Path.GetFullPath(oldPath) ==
+            Path.GetFullPath(_root))
+        {
+            _outputBox.Text =
+                "The project root cannot be renamed from here.";
+
+            return;
+        }
+
+        var oldName =
+            Path.GetFileName(oldPath);
+
+        var newName =
+            await AskForNameAsync(
+                "Rename",
+                "New name",
+                oldName);
+
+        if (string.IsNullOrWhiteSpace(newName) ||
+            newName == oldName)
+        {
+            return;
+        }
+
+        var parent =
+            Path.GetDirectoryName(oldPath);
+
+        if (parent is null)
+            return;
+
+        var newPath =
+            Path.Combine(parent, newName);
+
+        try
+        {
+            if (File.Exists(oldPath))
+            {
+                File.Move(
+                    oldPath,
+                    newPath);
+            }
+            else if (Directory.Exists(oldPath))
+            {
+                Directory.Move(
+                    oldPath,
+                    newPath);
+            }
+
+            RefreshProjectTree();
+        }
+        catch (Exception ex)
+        {
+            _outputBox.Text =
+                $"Rename failed: {ex.Message}";
+        }
+    }
+    private async void NewFolder_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        var directory =
+            GetTargetDirectory();
+
+        var name =
+            await AskForNameAsync(
+                "New Folder",
+                "Folder name",
+                "NewFolder");
+
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        if (Path.GetFileName(name) != name)
+        {
+            _outputBox.Text =
+                "Enter a folder name, not a full path.";
+
+            return;
+        }
+
+        var path =
+            Path.Combine(directory, name);
+
+        if (Directory.Exists(path))
+        {
+            _outputBox.Text =
+                $"'{name}' already exists.";
+
+            return;
+        }
+
+        Directory.CreateDirectory(path);
+
+        RefreshProjectTree();
+    }
+    private async void ProjectTree_DoubleTapped(
+    object? sender,
+    TappedEventArgs e)
+    {
+        var path = GetSelectedPath();
+
+        if (path is null)
+            return;
+
+        if (File.Exists(path))
+            await OpenFileAsync(path);
+    }
     public void OpenFile(string path) => _ = OpenFileAsync(path);
 
     private async Task OpenFileAsync(string path)
@@ -582,11 +1096,11 @@ public partial class EditorView : UserControl
     {
         if (_project is null)
         {
-            OutputBox.Text = "This folder has no .axn project file, so Axiom does not know how to build it.";
+            _outputBox.Text = "This folder has no .axn project file, so Axiom does not know how to build it.";
             return;
         }
 
-        OutputBox.Text = "Building...";
+        _outputBox.Text = "Building...";
 
         try
         {
@@ -599,11 +1113,11 @@ public partial class EditorView : UserControl
                 _ => (-1, $"No builder is registered for '{_project.Language}'.")
             };
 
-            OutputBox.Text = $"Exit code: {result.Item1}{Environment.NewLine}{Environment.NewLine}{result.Item2}";
+            _outputBox.Text = $"Exit code: {result.Item1}{Environment.NewLine}{Environment.NewLine}{result.Item2}";
         }
         catch (Exception ex)
         {
-            OutputBox.Text = $"Build could not start.{Environment.NewLine}{Environment.NewLine}{ex.Message}";
+            _outputBox.Text = $"Build could not start.{Environment.NewLine}{Environment.NewLine}{ex.Message}";
         }
     }
 
@@ -650,17 +1164,6 @@ public partial class EditorView : UserControl
         await File.WriteAllTextAsync(generatedProject, xml);
         return await _process.RunAsync("dotnet", $"build \"{generatedProject}\"", _root);
     }
-
-    private sealed class ProjectFileItem
-    {
-        public ProjectFileItem(string root, string fullPath)
-        {
-            FullPath = fullPath;
-            DisplayPath = Path.GetRelativePath(root, fullPath);
-        }
-
-        public string FullPath { get; }
-        public string DisplayPath { get; }
-        public override string ToString() => DisplayPath;
-    }
 }
+
+ 

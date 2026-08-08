@@ -57,6 +57,25 @@
 				<MenuItem Header="Toolchains"
 						  Click="Menu_Toolchains_Click" />
 			</MenuItem>
+			<MenuItem Header="Themes">
+				<MenuItem
+					Header="Axiom Dark"
+					Click="ThemeDark_Click" />
+
+				<MenuItem
+					Header="Axiom Light"
+					Click="ThemeLight_Click" />
+
+				<Separator />
+
+				<MenuItem
+					Header="Import Theme Code..."
+					Click="ImportTheme_Click" />
+
+				<MenuItem
+					Header="Copy Current Theme Code"
+					Click="CopyThemeCode_Click" />
+			</MenuItem>
 
 			<MenuItem Header="_Help">
 				<MenuItem Header="About Axiom"

@@ -1,34 +1,106 @@
-<Application xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="Axiom.App"
-             RequestedThemeVariant="Dark">
-  <Application.Styles>
-    <FluentTheme DensityStyle="Compact" />
+<Application
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.App">
 
-    <Style Selector="Window">
-      <Setter Property="Background" Value="#171719" />
-      <Setter Property="Foreground" Value="#E7E7EA" />
-    </Style>
+	<Application.Resources>
 
-    <Style Selector="Button">
-      <Setter Property="CornerRadius" Value="4" />
-      <Setter Property="Padding" Value="12,7" />
-    </Style>
+		<SolidColorBrush
+            x:Key="AxiomBackground"
+            Color="#18181B" />
 
-    <Style Selector="Button.primary">
-      <Setter Property="Background" Value="#6F56A8" />
-      <Setter Property="Foreground" Value="White" />
-    </Style>
+		<SolidColorBrush
+            x:Key="AxiomPanel"
+            Color="#202024" />
 
-    <Style Selector="Border.panel">
-      <Setter Property="Background" Value="#202023" />
-      <Setter Property="BorderBrush" Value="#303036" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="5" />
-    </Style>
+		<SolidColorBrush
+            x:Key="AxiomBorder"
+            Color="#303036" />
 
-    <Style Selector="TextBlock.muted">
-      <Setter Property="Foreground" Value="#A4A4AD" />
-    </Style>
-  </Application.Styles>
+		<SolidColorBrush
+            x:Key="AxiomForeground"
+            Color="#E8E8EA" />
+
+		<SolidColorBrush
+            x:Key="AxiomMuted"
+            Color="#92929A" />
+
+		<SolidColorBrush
+            x:Key="AxiomAccent"
+            Color="#8B5CF6" />
+
+		<SolidColorBrush
+            x:Key="EditorBackground"
+            Color="#121214" />
+
+		<SolidColorBrush
+            x:Key="EditorForeground"
+            Color="#E8E8EA" />
+
+		<SolidColorBrush
+            x:Key="EditorSelection"
+            Color="#35313D" />
+
+	</Application.Resources>
+
+	<Application.Styles>
+
+		<FluentTheme />
+
+		<Style Selector="Window">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomBackground}" />
+
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
+		</Style>
+
+		<Style Selector="Button">
+			<Setter
+                Property="CornerRadius"
+                Value="4" />
+
+			<Setter
+                Property="Padding"
+                Value="12,7" />
+		</Style>
+
+		<Style Selector="Button.primary">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomAccent}" />
+
+			<Setter
+                Property="Foreground"
+                Value="White" />
+		</Style>
+
+		<Style Selector="Border.panel">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomPanel}" />
+
+			<Setter
+                Property="BorderBrush"
+                Value="{DynamicResource AxiomBorder}" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="1" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="5" />
+		</Style>
+
+		<Style Selector="TextBlock.muted">
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomMuted}" />
+		</Style>
+
+	</Application.Styles>
+
 </Application>
