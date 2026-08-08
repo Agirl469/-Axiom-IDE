@@ -3,170 +3,337 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:Class="Axiom.Views.ThemeEditorView">
 
-    <Grid Margin="24"
-          ColumnDefinitions="360,*"
-          ColumnSpacing="24">
+	<Grid
+        Margin="24"
+        ColumnDefinitions="380,*"
+        ColumnSpacing="24">
 
-        <ScrollViewer Grid.Column="0">
+		<!-- Settings -->
+		<ScrollViewer Grid.Column="0">
 
-            <StackPanel Spacing="16">
+			<StackPanel Spacing="16">
 
-                <TextBlock
+				<TextBlock
                     Text="Theme Editor"
                     FontSize="26"
                     FontWeight="SemiBold" />
 
-                <TextBlock
-                    Text="Customize Axiom's interface and editor colors."
+				<TextBlock
+                    Text="Customize Axiom's interface, editor, fonts and code colors."
                     Classes="muted"
                     TextWrapping="Wrap" />
 
-                <StackPanel Spacing="6">
+				<!-- Theme info -->
 
-                    <TextBlock Text="Theme name" />
+				<StackPanel Spacing="6">
 
-                    <TextBox
-                        x:Name="ThemeNameBox" />
+					<TextBlock Text="Theme name" />
 
-                </StackPanel>
+					<TextBox
+                        x:Name="ThemeNameBox"
+                        Watermark="My Theme" />
 
-                <StackPanel Spacing="6">
+				</StackPanel>
 
-                    <TextBlock Text="Author" />
+				<StackPanel Spacing="6">
 
-                    <TextBox
-                        x:Name="AuthorBox" />
+					<TextBlock Text="Author" />
 
-                </StackPanel>
+					<TextBox
+                        x:Name="AuthorBox"
+                        Watermark="Author" />
 
-                <Separator />
+				</StackPanel>
 
-                <TextBlock
+				<Separator />
+
+				<!-- Fonts -->
+
+				<TextBlock
+                    Text="Fonts"
+                    FontSize="18"
+                    FontWeight="SemiBold" />
+
+				<TextBlock
+                    Text="Use an installed font or import your own .ttf or .otf font."
+                    Classes="muted"
+                    TextWrapping="Wrap" />
+
+				<StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8">
+
+					<Button
+                        Content="Import Font..."
+                        Click="ImportFont_Click" />
+
+					<Button
+                        Content="Refresh Fonts"
+                        Click="RefreshFonts_Click" />
+
+				</StackPanel>
+
+				<TextBlock
+                    x:Name="FontStatusText"
+                    Classes="muted"
+                    TextWrapping="Wrap" />
+
+				<StackPanel Spacing="6">
+
+					<TextBlock Text="Interface font" />
+
+					<ComboBox
+                        x:Name="UiFontBox"
+                        PlaceholderText="Choose interface font" />
+
+				</StackPanel>
+
+				<StackPanel Spacing="6">
+
+					<TextBlock Text="Interface font size" />
+
+					<TextBox
+                        x:Name="UiFontSizeBox"
+                        Text="14" />
+
+				</StackPanel>
+
+				<StackPanel Spacing="6">
+
+					<TextBlock Text="Code editor font" />
+
+					<ComboBox
+                        x:Name="EditorFontBox"
+                        PlaceholderText="Choose code font" />
+
+				</StackPanel>
+
+				<StackPanel Spacing="6">
+
+					<TextBlock Text="Code editor font size" />
+
+					<TextBox
+                        x:Name="EditorFontSizeBox"
+                        Text="14" />
+
+				</StackPanel>
+
+				<Separator />
+
+				<!-- Interface colors -->
+
+				<TextBlock
                     Text="Interface"
                     FontSize="18"
                     FontWeight="SemiBold" />
 
-                <TextBlock Text="Background" />
-                <TextBox x:Name="BackgroundBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Background" />
+					<TextBox x:Name="BackgroundBox" />
+				</StackPanel>
 
-                <TextBlock Text="Panel" />
-                <TextBox x:Name="PanelBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Panel" />
+					<TextBox x:Name="PanelBox" />
+				</StackPanel>
 
-                <TextBlock Text="Border" />
-                <TextBox x:Name="BorderBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Border" />
+					<TextBox x:Name="BorderBox" />
+				</StackPanel>
 
-                <TextBlock Text="Foreground" />
-                <TextBox x:Name="ForegroundBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Text" />
+					<TextBox x:Name="ForegroundBox" />
+				</StackPanel>
 
-                <TextBlock Text="Muted text" />
-                <TextBox x:Name="MutedBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Muted text" />
+					<TextBox x:Name="MutedBox" />
+				</StackPanel>
 
-                <TextBlock Text="Accent" />
-                <TextBox x:Name="AccentBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Accent" />
+					<TextBox x:Name="AccentBox" />
+				</StackPanel>
 
-                <Separator />
+				<Separator />
 
-                <TextBlock
+				<!-- Editor -->
+
+				<TextBlock
                     Text="Editor"
                     FontSize="18"
                     FontWeight="SemiBold" />
 
-                <TextBlock Text="Editor background" />
-                <TextBox x:Name="EditorBackgroundBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Editor background" />
+					<TextBox x:Name="EditorBackgroundBox" />
+				</StackPanel>
 
-                <TextBlock Text="Editor text" />
-                <TextBox x:Name="EditorForegroundBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Editor text" />
+					<TextBox x:Name="EditorForegroundBox" />
+				</StackPanel>
 
-                <TextBlock Text="Selection" />
-                <TextBox x:Name="SelectionBox" />
+				<StackPanel Spacing="6">
+					<TextBlock Text="Selection" />
+					<TextBox x:Name="SelectionBox" />
+				</StackPanel>
 
-                <StackPanel
+				<Separator />
+
+				<!-- Code color presets -->
+
+				<TextBlock
+                    Text="Code colors"
+                    FontSize="18"
+                    FontWeight="SemiBold" />
+
+				<TextBlock
+                    Text="Choose a preset for syntax colors. These will be used when syntax highlighting is added."
+                    Classes="muted"
+                    TextWrapping="Wrap" />
+
+				<ComboBox
+                    x:Name="SyntaxPresetBox"
+                    PlaceholderText="Choose code color preset"
+                    SelectedIndex="0"
+                    SelectionChanged="SyntaxPreset_SelectionChanged">
+
+					<ComboBoxItem
+                        Content="Axiom"
+                        Tag="axiom" />
+
+					<ComboBoxItem
+                        Content="Midnight"
+                        Tag="midnight" />
+
+					<ComboBoxItem
+                        Content="Rose"
+                        Tag="rose" />
+
+					<ComboBoxItem
+                        Content="Forest"
+                        Tag="forest" />
+
+					<ComboBoxItem
+                        Content="Ocean"
+                        Tag="ocean" />
+
+					<ComboBoxItem
+                        Content="Paper"
+                        Tag="paper" />
+
+				</ComboBox>
+
+				<Separator />
+
+				<!-- Actions -->
+
+				<StackPanel
                     Orientation="Horizontal"
-                    Spacing="8"
-                    Margin="0,10,0,0">
+                    Spacing="8">
 
-                    <Button
+					<Button
                         Content="Apply"
                         Classes="primary"
                         Click="Apply_Click" />
 
-                    <Button
-                        Content="Reset Dark"
+					<Button
+                        Content="Axiom Dark"
                         Click="ResetDark_Click" />
 
-                    <Button
-                        Content="Reset Light"
+					<Button
+                        Content="Axiom Light"
                         Click="ResetLight_Click" />
 
-                </StackPanel>
+				</StackPanel>
 
-                <TextBlock
+				<TextBlock
                     x:Name="StatusText"
                     Classes="muted"
                     TextWrapping="Wrap" />
 
-            </StackPanel>
+			</StackPanel>
 
-        </ScrollViewer>
+		</ScrollViewer>
 
-        <Border
+		<!-- Preview -->
+
+		<Border
             Grid.Column="1"
             Classes="panel"
             Padding="18">
 
-            <Grid RowDefinitions="Auto,*">
+			<Grid RowDefinitions="Auto,*">
 
-                <TextBlock
+				<TextBlock
                     Text="Preview"
                     FontSize="18"
                     FontWeight="SemiBold"
                     Margin="0,0,0,12" />
 
-                <Border
-                    Grid.Row="1"
+				<Border
                     x:Name="PreviewBorder"
-                    Padding="18">
+                    Grid.Row="1"
+                    Padding="20"
+                    CornerRadius="6">
 
-                    <StackPanel Spacing="12">
+					<StackPanel Spacing="14">
 
-                        <TextBlock
+						<TextBlock
                             x:Name="PreviewTitle"
                             Text="Axiom Project"
                             FontSize="20"
                             FontWeight="SemiBold" />
 
-                        <TextBlock
+						<TextBlock
                             x:Name="PreviewMuted"
-                            Text="A small preview of the current theme." />
+                            Text="Preview your interface and typography here." />
 
-                        <Border
+						<Border
                             x:Name="PreviewPanel"
-                            Padding="14"
+                            Padding="16"
                             CornerRadius="5">
 
-                            <StackPanel Spacing="8">
+							<StackPanel Spacing="10">
 
-                                <TextBlock
+								<TextBlock
                                     Text="main.cpp"
                                     FontWeight="SemiBold" />
 
-                                <TextBlock
-                                    FontFamily="Cascadia Mono, JetBrains Mono, DejaVu Sans Mono, monospace"
+								<TextBlock
+                                    FontFamily="{DynamicResource AxiomEditorFont}"
+                                    FontSize="{DynamicResource AxiomEditorFontSize}"
                                     TextWrapping="Wrap"
-                                    Text="#include &lt;iostream&gt;&#10;&#10;int main()&#10;{&#10;    std::cout &lt;&lt; &quot;Hello from Axiom&quot;;&#10;}" />
+                                    Text="#include &lt;iostream&gt;&#10;&#10;int main()&#10;{&#10;    std::cout &lt;&lt; &quot;Hello from Axiom&quot;;&#10;    return 0;&#10;}" />
 
-                            </StackPanel>
+							</StackPanel>
 
-                        </Border>
+						</Border>
 
-                    </StackPanel>
+						<StackPanel
+                            Orientation="Horizontal"
+                            Spacing="8">
 
-                </Border>
+							<Button
+                                Content="Build"
+                                Classes="primary" />
 
-            </Grid>
+							<Button
+                                Content="Run" />
 
-        </Border>
+						</StackPanel>
 
-    </Grid>
+					</StackPanel>
+
+				</Border>
+
+			</Grid>
+
+		</Border>
+
+	</Grid>
 
 </UserControl>

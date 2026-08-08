@@ -1,8 +1,15 @@
-﻿using Avalonia.Controls;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 
+using Axiom.Fonts;
 using Axiom.Themes;
 
 namespace Axiom.Views;
@@ -10,6 +17,7 @@ namespace Axiom.Views;
 public partial class ThemeEditorView : UserControl
 {
     private readonly ThemeService _themes;
+    private readonly FontService _fonts = new();
 
     private readonly TextBox _themeNameBox;
     private readonly TextBox _authorBox;
@@ -25,12 +33,26 @@ public partial class ThemeEditorView : UserControl
     private readonly TextBox _editorForegroundBox;
     private readonly TextBox _selectionBox;
 
+    private readonly ComboBox _uiFontBox;
+    private readonly TextBox _uiFontSizeBox;
+
+    private readonly ComboBox _editorFontBox;
+    private readonly TextBox _editorFontSizeBox;
+
+    private readonly ComboBox _syntaxPresetBox;
+
     private readonly TextBlock _statusText;
+    private readonly TextBlock _fontStatusText;
 
     private readonly Border _previewBorder;
     private readonly Border _previewPanel;
+
     private readonly TextBlock _previewTitle;
     private readonly TextBlock _previewMuted;
+
+    // AXAML events can fire while AvaloniaXamlLoader.Load(this)
+    // is still constructing the view.
+    private bool _initializing = true;
 
     public ThemeEditorView(ThemeService themes)
     {
@@ -39,87 +61,133 @@ public partial class ThemeEditorView : UserControl
         AvaloniaXamlLoader.Load(this);
 
         _themeNameBox =
-            this.FindControl<TextBox>("ThemeNameBox")
-            ?? throw new InvalidOperationException("ThemeNameBox was not found.");
+            FindRequired<TextBox>("ThemeNameBox");
 
         _authorBox =
-            this.FindControl<TextBox>("AuthorBox")
-            ?? throw new InvalidOperationException("AuthorBox was not found.");
+            FindRequired<TextBox>("AuthorBox");
 
         _backgroundBox =
-            this.FindControl<TextBox>("BackgroundBox")
-            ?? throw new InvalidOperationException("BackgroundBox was not found.");
+            FindRequired<TextBox>("BackgroundBox");
 
         _panelBox =
-            this.FindControl<TextBox>("PanelBox")
-            ?? throw new InvalidOperationException("PanelBox was not found.");
+            FindRequired<TextBox>("PanelBox");
 
         _borderBox =
-            this.FindControl<TextBox>("BorderBox")
-            ?? throw new InvalidOperationException("BorderBox was not found.");
+            FindRequired<TextBox>("BorderBox");
 
         _foregroundBox =
-            this.FindControl<TextBox>("ForegroundBox")
-            ?? throw new InvalidOperationException("ForegroundBox was not found.");
+            FindRequired<TextBox>("ForegroundBox");
 
         _mutedBox =
-            this.FindControl<TextBox>("MutedBox")
-            ?? throw new InvalidOperationException("MutedBox was not found.");
+            FindRequired<TextBox>("MutedBox");
 
         _accentBox =
-            this.FindControl<TextBox>("AccentBox")
-            ?? throw new InvalidOperationException("AccentBox was not found.");
+            FindRequired<TextBox>("AccentBox");
 
         _editorBackgroundBox =
-            this.FindControl<TextBox>("EditorBackgroundBox")
-            ?? throw new InvalidOperationException("EditorBackgroundBox was not found.");
+            FindRequired<TextBox>("EditorBackgroundBox");
 
         _editorForegroundBox =
-            this.FindControl<TextBox>("EditorForegroundBox")
-            ?? throw new InvalidOperationException("EditorForegroundBox was not found.");
+            FindRequired<TextBox>("EditorForegroundBox");
 
         _selectionBox =
-            this.FindControl<TextBox>("SelectionBox")
-            ?? throw new InvalidOperationException("SelectionBox was not found.");
+            FindRequired<TextBox>("SelectionBox");
+
+        _uiFontBox =
+            FindRequired<ComboBox>("UiFontBox");
+
+        _uiFontSizeBox =
+            FindRequired<TextBox>("UiFontSizeBox");
+
+        _editorFontBox =
+            FindRequired<ComboBox>("EditorFontBox");
+
+        _editorFontSizeBox =
+            FindRequired<TextBox>("EditorFontSizeBox");
+
+        _syntaxPresetBox =
+            FindRequired<ComboBox>("SyntaxPresetBox");
+
+        _fontStatusText =
+            FindRequired<TextBlock>("FontStatusText");
 
         _statusText =
-            this.FindControl<TextBlock>("StatusText")
-            ?? throw new InvalidOperationException("StatusText was not found.");
+            FindRequired<TextBlock>("StatusText");
 
         _previewBorder =
-            this.FindControl<Border>("PreviewBorder")
-            ?? throw new InvalidOperationException("PreviewBorder was not found.");
+            FindRequired<Border>("PreviewBorder");
 
         _previewPanel =
-            this.FindControl<Border>("PreviewPanel")
-            ?? throw new InvalidOperationException("PreviewPanel was not found.");
+            FindRequired<Border>("PreviewPanel");
 
         _previewTitle =
-            this.FindControl<TextBlock>("PreviewTitle")
-            ?? throw new InvalidOperationException("PreviewTitle was not found.");
+            FindRequired<TextBlock>("PreviewTitle");
 
         _previewMuted =
-            this.FindControl<TextBlock>("PreviewMuted")
-            ?? throw new InvalidOperationException("PreviewMuted was not found.");
+            FindRequired<TextBlock>("PreviewMuted");
 
+        RefreshFontLists();
         LoadTheme(_themes.Current);
+
+        _initializing = false;
+    }
+
+    private T FindRequired<T>(string name)
+        where T : Control
+    {
+        return this.FindControl<T>(name)
+            ?? throw new InvalidOperationException(
+                $"{name} was not found in ThemeEditorView.axaml.");
     }
 
     private void LoadTheme(AxiomTheme theme)
     {
-        _themeNameBox.Text = theme.Name;
-        _authorBox.Text = theme.Author;
+        _themeNameBox.Text =
+            theme.Name;
 
-        _backgroundBox.Text = theme.Ui.Background;
-        _panelBox.Text = theme.Ui.Panel;
-        _borderBox.Text = theme.Ui.Border;
-        _foregroundBox.Text = theme.Ui.Foreground;
-        _mutedBox.Text = theme.Ui.Muted;
-        _accentBox.Text = theme.Ui.Accent;
+        _authorBox.Text =
+            theme.Author;
 
-        _editorBackgroundBox.Text = theme.Editor.Background;
-        _editorForegroundBox.Text = theme.Editor.Foreground;
-        _selectionBox.Text = theme.Editor.Selection;
+        _backgroundBox.Text =
+            theme.Ui.Background;
+
+        _panelBox.Text =
+            theme.Ui.Panel;
+
+        _borderBox.Text =
+            theme.Ui.Border;
+
+        _foregroundBox.Text =
+            theme.Ui.Foreground;
+
+        _mutedBox.Text =
+            theme.Ui.Muted;
+
+        _accentBox.Text =
+            theme.Ui.Accent;
+
+        _editorBackgroundBox.Text =
+            theme.Editor.Background;
+
+        _editorForegroundBox.Text =
+            theme.Editor.Foreground;
+
+        _selectionBox.Text =
+            theme.Editor.Selection;
+
+        _uiFontSizeBox.Text =
+            theme.Typography.UiFontSize.ToString();
+
+        _editorFontSizeBox.Text =
+            theme.Typography.EditorFontSize.ToString();
+
+        SelectFont(
+            _uiFontBox,
+            theme.Typography.UiFont);
+
+        SelectFont(
+            _editorFontBox,
+            theme.Typography.EditorFont);
 
         UpdatePreview(theme);
     }
@@ -140,30 +208,88 @@ public partial class ThemeEditorView : UserControl
 
             Ui = new ThemeUi
             {
-                Background = NormalizeColor(_backgroundBox.Text),
-                Panel = NormalizeColor(_panelBox.Text),
-                Border = NormalizeColor(_borderBox.Text),
-                Foreground = NormalizeColor(_foregroundBox.Text),
-                Muted = NormalizeColor(_mutedBox.Text),
-                Accent = NormalizeColor(_accentBox.Text)
+                Background =
+                    NormalizeColor(
+                        _backgroundBox.Text),
+
+                Panel =
+                    NormalizeColor(
+                        _panelBox.Text),
+
+                Border =
+                    NormalizeColor(
+                        _borderBox.Text),
+
+                Foreground =
+                    NormalizeColor(
+                        _foregroundBox.Text),
+
+                Muted =
+                    NormalizeColor(
+                        _mutedBox.Text),
+
+                Accent =
+                    NormalizeColor(
+                        _accentBox.Text)
             },
 
             Editor = new ThemeEditor
             {
-                Background = NormalizeColor(_editorBackgroundBox.Text),
-                Foreground = NormalizeColor(_editorForegroundBox.Text),
-                Selection = NormalizeColor(_selectionBox.Text),
-                CurrentLine = "#18181C"
+                Background =
+                    NormalizeColor(
+                        _editorBackgroundBox.Text),
+
+                Foreground =
+                    NormalizeColor(
+                        _editorForegroundBox.Text),
+
+                Selection =
+                    NormalizeColor(
+                        _selectionBox.Text),
+
+                CurrentLine =
+                    _themes.Current.Editor.CurrentLine
+            },
+
+            Syntax =
+                GetSelectedSyntaxPreset(),
+
+            Typography = new ThemeTypography
+            {
+                UiFont =
+                    GetSelectedFont(
+                        _uiFontBox,
+                        "DejaVu Sans"),
+
+                UiFontSize =
+                    ReadFontSize(
+                        _uiFontSizeBox.Text,
+                        14),
+
+                EditorFont =
+                    GetSelectedFont(
+                        _editorFontBox,
+                        "DejaVu Sans Mono"),
+
+                EditorFontSize =
+                    ReadFontSize(
+                        _editorFontSizeBox.Text,
+                        14)
             }
         };
     }
 
-    private static string NormalizeColor(string? value)
+    private static string NormalizeColor(
+        string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new InvalidOperationException("A color field is empty.");
+        {
+            throw new InvalidOperationException(
+                "A color field is empty.");
+        }
 
-        var text = value.Trim();
+        var text =
+            value.Trim();
 
         if (!text.StartsWith('#'))
             text = "#" + text;
@@ -173,13 +299,130 @@ public partial class ThemeEditorView : UserControl
         return text;
     }
 
+    private static double ReadFontSize(
+        string? value,
+        double fallback)
+    {
+        if (!double.TryParse(
+                value,
+                out var size))
+        {
+            return fallback;
+        }
+
+        return Math.Clamp(
+            size,
+            8,
+            32);
+    }
+
+    private static string GetSelectedFont(
+        ComboBox comboBox,
+        string fallback)
+    {
+        if (comboBox.SelectedItem is string font &&
+            !string.IsNullOrWhiteSpace(font))
+        {
+            return font;
+        }
+
+        return fallback;
+    }
+
+    private static void SelectFont(
+        ComboBox comboBox,
+        string font)
+    {
+        if (comboBox.ItemsSource
+            is not IEnumerable<string> fonts)
+        {
+            return;
+        }
+
+        // Theme defaults may contain fallback lists:
+        // "JetBrains Mono, Cascadia Mono, ..."
+        // Try each family until one installed font matches.
+        var requestedFonts =
+            font.Split(
+                ',',
+                StringSplitOptions.RemoveEmptyEntries |
+                StringSplitOptions.TrimEntries);
+
+        foreach (var requested in requestedFonts)
+        {
+            var match =
+                fonts.FirstOrDefault(
+                    item =>
+                        string.Equals(
+                            item,
+                            requested,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (match is null)
+                continue;
+
+            comboBox.SelectedItem = match;
+            return;
+        }
+    }
+
+    private void RefreshFontLists()
+    {
+        var currentUi =
+            GetSelectedFont(
+                _uiFontBox,
+                string.Empty);
+
+        var currentEditor =
+            GetSelectedFont(
+                _editorFontBox,
+                string.Empty);
+
+        var fonts =
+            _fonts
+                .GetSystemFontNames()
+                .Concat(
+                    _fonts
+                        .GetImportedFonts()
+                        .Select(font => font.Name))
+                .Where(
+                    font =>
+                        !string.IsNullOrWhiteSpace(font))
+                .Distinct(
+                    StringComparer.OrdinalIgnoreCase)
+                .OrderBy(
+                    name => name)
+                .ToList();
+
+        _uiFontBox.ItemsSource =
+            fonts;
+
+        _editorFontBox.ItemsSource =
+            fonts;
+
+        if (!string.IsNullOrWhiteSpace(currentUi))
+        {
+            SelectFont(
+                _uiFontBox,
+                currentUi);
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentEditor))
+        {
+            SelectFont(
+                _editorFontBox,
+                currentEditor);
+        }
+    }
+
     private void Apply_Click(
         object? sender,
         RoutedEventArgs e)
     {
         try
         {
-            var theme = ReadTheme();
+            var theme =
+                ReadTheme();
 
             _themes.Apply(theme);
 
@@ -199,48 +442,233 @@ public partial class ThemeEditorView : UserControl
         object? sender,
         RoutedEventArgs e)
     {
-        var theme =
-            ThemeService.CreateAxiomDark();
+        _initializing = true;
 
-        _themes.Apply(theme);
-        LoadTheme(theme);
+        try
+        {
+            var theme =
+                ThemeService.CreateAxiomDark();
 
-        _statusText.Text =
-            "Restored Axiom Dark.";
+            _themes.Apply(theme);
+
+            RefreshFontLists();
+            LoadTheme(theme);
+
+            _statusText.Text =
+                "Restored Axiom Dark.";
+        }
+        finally
+        {
+            _initializing = false;
+        }
     }
 
     private void ResetLight_Click(
         object? sender,
         RoutedEventArgs e)
     {
-        var theme =
-            ThemeService.CreateLight();
+        _initializing = true;
 
-        _themes.Apply(theme);
-        LoadTheme(theme);
+        try
+        {
+            var theme =
+                ThemeService.CreateLight();
 
-        _statusText.Text =
-            "Restored Axiom Light.";
+            _themes.Apply(theme);
+
+            RefreshFontLists();
+            LoadTheme(theme);
+
+            _statusText.Text =
+                "Restored Axiom Light.";
+        }
+        finally
+        {
+            _initializing = false;
+        }
     }
 
-    private void UpdatePreview(AxiomTheme theme)
+    private async void ImportFont_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        var topLevel =
+            TopLevel.GetTopLevel(this);
+
+        if (topLevel is null)
+            return;
+
+        var files =
+            await topLevel.StorageProvider
+                .OpenFilePickerAsync(
+                    new FilePickerOpenOptions
+                    {
+                        Title = "Import Font",
+
+                        AllowMultiple = false,
+
+                        FileTypeFilter =
+                        [
+                            new FilePickerFileType(
+                                "Font Files")
+                            {
+                                Patterns =
+                                [
+                                    "*.ttf",
+                                    "*.otf"
+                                ]
+                            }
+                        ]
+                    });
+
+        if (files.Count == 0)
+            return;
+
+        var source =
+            files[0].TryGetLocalPath();
+
+        if (string.IsNullOrWhiteSpace(source))
+            return;
+
+        try
+        {
+            var font =
+                await _fonts.ImportAsync(source);
+
+            _fontStatusText.Text =
+                $"Imported {font.FileName}";
+
+            RefreshFontLists();
+        }
+        catch (Exception ex)
+        {
+            _fontStatusText.Text =
+                $"Could not import font: {ex.Message}";
+        }
+    }
+
+    private void RefreshFonts_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        RefreshFontLists();
+
+        _fontStatusText.Text =
+            "Font list refreshed.";
+    }
+
+    private void SyntaxPreset_SelectionChanged(
+        object? sender,
+        SelectionChangedEventArgs e)
+    {
+        // This event can fire while AXAML is loading.
+        // Do not touch the editor fields until initialization is complete.
+        if (_initializing)
+            return;
+
+        try
+        {
+            var theme =
+                ReadTheme();
+
+            UpdatePreview(theme);
+
+            if (_syntaxPresetBox.SelectedItem
+                is ComboBoxItem item)
+            {
+                _statusText.Text =
+                    $"Code colors: {item.Content}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _statusText.Text =
+                $"Preview error: {ex.Message}";
+        }
+    }
+
+    private ThemeSyntax GetSelectedSyntaxPreset()
+    {
+        if (_syntaxPresetBox.SelectedItem
+            is ComboBoxItem item)
+        {
+            var tag =
+                item.Tag?
+                    .ToString()?
+                    .ToLowerInvariant();
+
+            return tag switch
+            {
+                "midnight" =>
+                    SyntaxPresets.Midnight(),
+
+                "rose" =>
+                    SyntaxPresets.Rose(),
+
+                "forest" =>
+                    SyntaxPresets.Forest(),
+
+                "ocean" =>
+                    SyntaxPresets.Ocean(),
+
+                "paper" =>
+                    SyntaxPresets.Paper(),
+
+                _ =>
+                    SyntaxPresets.Axiom()
+            };
+        }
+
+        return _themes.Current.Syntax;
+    }
+
+    private void UpdatePreview(
+        AxiomTheme theme)
     {
         _previewBorder.Background =
-            Brush.Parse(theme.Ui.Background);
+            Brush.Parse(
+                theme.Ui.Background);
 
-        _previewTitle.Foreground =
-            Brush.Parse(theme.Ui.Foreground);
+        _previewBorder.BorderBrush =
+            Brush.Parse(
+                theme.Ui.Border);
 
-        _previewMuted.Foreground =
-            Brush.Parse(theme.Ui.Muted);
+        _previewBorder.BorderThickness =
+            new Thickness(1);
 
         _previewPanel.Background =
-            Brush.Parse(theme.Ui.Panel);
+            Brush.Parse(
+                theme.Ui.Panel);
 
         _previewPanel.BorderBrush =
-            Brush.Parse(theme.Ui.Border);
+            Brush.Parse(
+                theme.Ui.Border);
 
         _previewPanel.BorderThickness =
-            new Avalonia.Thickness(1);
+            new Thickness(1);
+
+        _previewTitle.Foreground =
+            Brush.Parse(
+                theme.Ui.Foreground);
+
+        _previewMuted.Foreground =
+            Brush.Parse(
+                theme.Ui.Muted);
+
+        var previewFont =
+            new FontFamily(
+                theme.Typography.UiFont);
+
+        _previewTitle.FontFamily =
+            previewFont;
+
+        _previewTitle.FontSize =
+            theme.Typography.UiFontSize;
+
+        _previewMuted.FontFamily =
+            previewFont;
+
+        _previewMuted.FontSize =
+            theme.Typography.UiFontSize;
     }
 }

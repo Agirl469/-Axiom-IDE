@@ -13,6 +13,8 @@ public sealed class AxiomTheme
     public ThemeEditor Editor { get; set; } = new();
 
     public ThemeSyntax Syntax { get; set; } = new();
+
+    public ThemeTypography Typography { get; set; } = new();
 }
 
 public sealed class ThemeUi
@@ -41,4 +43,17 @@ public sealed class ThemeSyntax
     public string Comment { get; set; } = "#676E7B";
     public string Type { get; set; } = "#82AAFF";
     public string Function { get; set; } = "#FFCB6B";
+}
+
+public sealed class ThemeTypography
+{
+    public string UiFont { get; set; } =
+        "Inter, Segoe UI, DejaVu Sans, sans-serif";
+
+    public double UiFontSize { get; set; } = 14;
+
+    public string EditorFont { get; set; } =
+        "JetBrains Mono, Cascadia Mono, DejaVu Sans Mono, monospace";
+
+    public double EditorFontSize { get; set; } = 14;
 }
