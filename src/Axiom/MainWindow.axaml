@@ -12,23 +12,56 @@
 
 		<Menu Grid.Row="0">
 			<MenuItem Header="_File">
-				<MenuItem Header="_New Project" />
-				<MenuItem Header="_Open Project" />
-				<MenuItem Header="Open _Folder" />
+				<MenuItem Header="New Project..."
+						  Click="Menu_NewProject_Click" />
+
+				<MenuItem Header="Open Project..."
+						  Click="Menu_OpenProject_Click" />
+
 				<Separator />
-				<MenuItem Header="E_xit" />
+
+				<MenuItem Header="Save"
+						  Click="Menu_Save_Click" />
+
+				<Separator />
+
+				<MenuItem Header="Exit"
+						  Click="Menu_Exit_Click" />
 			</MenuItem>
 
-			<MenuItem Header="_Edit" />
-			<MenuItem Header="_View" />
-			<MenuItem Header="_Build" />
+			<MenuItem Header="_Edit">
+				<MenuItem Header="Undo"
+						  Click="Menu_Undo_Click" />
+
+				<MenuItem Header="Redo"
+						  Click="Menu_Redo_Click" />
+			</MenuItem>
+
+			<MenuItem Header="_View">
+				<MenuItem Header="Start Page"
+						  Click="Menu_StartPage_Click" />
+
+				<MenuItem Header="Toolchains"
+						  Click="Menu_Toolchains_Click" />
+			</MenuItem>
+
+			<MenuItem Header="_Build">
+				<MenuItem Header="Build Project"
+						  Click="Menu_Build_Click" />
+
+				<MenuItem Header="Run Project"
+						  Click="Menu_Run_Click" />
+			</MenuItem>
 
 			<MenuItem Header="_Tools">
-				<MenuItem Header="_Toolchains"
-                          Click="Toolchains_Click" />
+				<MenuItem Header="Toolchains"
+						  Click="Menu_Toolchains_Click" />
 			</MenuItem>
 
-			<MenuItem Header="_Help" />
+			<MenuItem Header="_Help">
+				<MenuItem Header="About Axiom"
+						  Click="Menu_About_Click" />
+			</MenuItem>
 		</Menu>
 
 		<ContentControl

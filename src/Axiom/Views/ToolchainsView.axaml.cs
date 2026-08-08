@@ -103,11 +103,18 @@ public partial class ToolchainsView : UserControl
 
         var install = new Button
         {
-            Content = status.Installed ? "Installed" : "Open terminal",
-            IsEnabled = !status.Installed && !status.InstallCommand.StartsWith("Package manager") && !status.InstallCommand.StartsWith("No ")
+            Content = status.Installed ? "Installed" : "Install",
+            MinWidth = 90,
+            IsEnabled =
+        !status.Installed &&
+        !status.InstallCommand.StartsWith("Package manager") &&
+        !status.InstallCommand.StartsWith("No ")
         };
-        install.Click += (_, _) => _process.TryStartTerminal(status.InstallCommand);
 
+        install.Click += (_, _) =>
+        {
+            _process.TryStartTerminal(status.InstallCommand);
+        };
         var actions = new StackPanel
         {
             Orientation = Orientation.Horizontal,

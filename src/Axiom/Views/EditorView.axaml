@@ -6,7 +6,8 @@
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel Orientation="Horizontal" Spacing="8">
           <Button Content="Build" Click="Build_Click" />
-          <Button Content="Run" IsEnabled="False" />
+			<Button Content="Run"
+		  Click="Run_Click" />
         </StackPanel>
         <TextBlock x:Name="ProjectKindText" Grid.Column="1" VerticalAlignment="Center" Classes="muted" />
       </Grid>

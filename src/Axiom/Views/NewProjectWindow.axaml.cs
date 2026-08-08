@@ -9,29 +9,81 @@ namespace Axiom.Views;
 
 public partial class NewProjectWindow : Window
 {
+    private readonly TextBox _locationBox;
+    private readonly TextBox _projectNameBox;
+    private readonly ListBox _templateList;
+    private readonly TextBlock _templateTitle;
+    private readonly TextBlock _templateDescription;
+    private readonly TextBlock _statusText;
     private string? _template;
     private readonly ProjectService _projects = new();
 
     public NewProjectWindow()
     {
         AvaloniaXamlLoader.Load(this);
-        LocationBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Projects");
-    }
 
+        _locationBox = this.FindControl<TextBox>("LocationBox")
+            ?? throw new InvalidOperationException("LocationBox was not found.");
+
+        _projectNameBox = this.FindControl<TextBox>("ProjectNameBox")
+            ?? throw new InvalidOperationException("ProjectNameBox was not found.");
+
+        _templateList = this.FindControl<ListBox>("TemplateList")
+            ?? throw new InvalidOperationException("TemplateList was not found.");
+
+        _templateTitle = this.FindControl<TextBlock>("TemplateTitle")
+            ?? throw new InvalidOperationException("TemplateTitle was not found.");
+
+        _templateDescription = this.FindControl<TextBlock>("TemplateDescription")
+            ?? throw new InvalidOperationException("TemplateDescription was not found.");
+
+        _statusText = this.FindControl<TextBlock>("StatusText")
+            ?? throw new InvalidOperationException("StatusText was not found.");
+
+        _locationBox.Text = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Projects");
+
+        _templateList.SelectedIndex = 0;
+    }
     private void TemplateList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (TemplateList.SelectedItem is not ListBoxItem item)
+        if (_templateList.SelectedItem is not ListBoxItem item)
             return;
 
         _template = item.Tag?.ToString();
 
-        (TemplateTitle.Text, TemplateDescription.Text) = _template switch
+        (_templateTitle.Text, _templateDescription.Text) = _template switch
         {
-            "cpp" => ("C++ console", "A small Axiom C++ project. Builds directly with GCC or Clang."),
-            "csharp" => ("C# console", "An Axiom-managed .NET project. No .sln or visible .csproj is created."),
-            "rust" => ("Rust binary", "An Axiom project using Cargo as its native Rust toolchain."),
-            "python" => ("Python project", "A simple Python project with no compile step."),
-            _ => ("Choose a template", "Select a project type on the left.")
+            "empty" => (
+                "Empty project",
+                "Creates a blank Axiom project with an .axn file and an empty src folder."
+            ),
+
+            "cpp" => (
+                "C++ console",
+                "A small C++ project that Axiom can build with GCC or Clang."
+            ),
+
+            "csharp" => (
+                "C# console",
+                "A .NET project managed by Axiom. No .sln is created for the project."
+            ),
+
+            "rust" => (
+                "Rust binary",
+                "A Rust project using Cargo as its build tool."
+            ),
+
+            "python" => (
+                "Python project",
+                "A basic Python project with no compile step."
+            ),
+
+            _ => (
+                "Choose a template",
+                "Select a project type on the left."
+            )
         };
     }
 
@@ -52,29 +104,29 @@ public partial class NewProjectWindow : Window
     {
         if (_template is null)
         {
-            StatusText.Text = "Choose a project template.";
+            _statusText.Text = "Choose a project template.";
             return;
         }
 
-        var name = ProjectNameBox.Text?.Trim();
-        var location = LocationBox.Text?.Trim();
+        var name = _projectNameBox.Text?.Trim();
+        var location = _locationBox.Text?.Trim();
 
         if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(location))
         {
-            StatusText.Text = "Project name and location are required.";
+            _statusText.Text = "Project name and location are required.";
             return;
         }
 
         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
         {
-            StatusText.Text = "The project name contains invalid characters.";
+            _statusText.Text = "The project name contains invalid characters.";
             return;
         }
 
         var root = Path.Combine(location, name);
         if (Directory.Exists(root) && Directory.EnumerateFileSystemEntries(root).Any())
         {
-            StatusText.Text = "That folder already exists and is not empty.";
+            _statusText.Text = "That folder already exists and is not empty.";
             return;
         }
 
@@ -90,6 +142,15 @@ public partial class NewProjectWindow : Window
 
         switch (template)
         {
+            case "empty":
+                project = new AxiomProject
+                {
+                    Name = name,
+                    Language = "none",
+                    Entry = null,
+                    Settings = new Dictionary<string, string>()
+                };
+                break;
             case "cpp":
                 project = new AxiomProject
                 {

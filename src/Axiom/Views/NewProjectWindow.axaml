@@ -13,12 +13,25 @@
     </StackPanel>
 
     <Grid Grid.Row="1" ColumnDefinitions="260,*" Margin="0,22,0,18">
-      <ListBox x:Name="TemplateList" SelectionChanged="TemplateList_SelectionChanged">
-        <ListBoxItem Content="C++ · CMake console" Tag="cpp" />
-        <ListBoxItem Content="C# · Console" Tag="csharp" />
-        <ListBoxItem Content="Rust · Cargo binary" Tag="rust" />
-        <ListBoxItem Content="Python · Basic project" Tag="python" />
-      </ListBox>
+		<ListBox x:Name="TemplateList"
+		   SelectionChanged="TemplateList_SelectionChanged">
+
+			<ListBoxItem Content="Empty Project"
+						 Tag="empty" />
+
+			<ListBoxItem Content="C++ · Console"
+						 Tag="cpp" />
+
+			<ListBoxItem Content="C# · Console"
+						 Tag="csharp" />
+
+			<ListBoxItem Content="Rust · Binary"
+						 Tag="rust" />
+
+			<ListBoxItem Content="Python · Basic"
+						 Tag="python" />
+
+		</ListBox>
 
       <StackPanel Grid.Column="1" Margin="20,0,0,0" Spacing="12">
         <TextBlock x:Name="TemplateTitle" Text="Choose a template" FontSize="18" FontWeight="SemiBold" />
