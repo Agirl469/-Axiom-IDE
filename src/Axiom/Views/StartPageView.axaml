@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Axiom.Views.StartPageView">
+  <Grid ColumnDefinitions="230,*">
+    <Border Grid.Column="0" Background="#1D1D20" BorderBrush="#303036" BorderThickness="0,0,1,0">
+      <StackPanel Margin="18,22" Spacing="8">
+        <TextBlock Text="AXIOM" FontSize="20" FontWeight="SemiBold" Margin="6,0,0,18" />
+        <Button Content="Home" HorizontalContentAlignment="Left" />
+        <Button Content="New Project" HorizontalContentAlignment="Left" Click="NewProject_Click" />
+        <Button Content="Open Project" HorizontalContentAlignment="Left" Click="OpenProject_Click" />
+        <Button Content="Toolchains" HorizontalContentAlignment="Left" Click="Toolchains_Click" />
+        <Button Content="Settings" HorizontalContentAlignment="Left" Click="Settings_Click" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Column="1">
+      <StackPanel Width="760" HorizontalAlignment="Center" Margin="40,56" Spacing="22">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Start" FontSize="32" FontWeight="SemiBold" />
+          <TextBlock Text="Open an Axiom project or start something new." FontSize="15" Classes="muted" />
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+          <Border Grid.Column="0" Classes="panel" Padding="20">
+            <StackPanel Spacing="12">
+              <TextBlock Text="Open project" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="Open a .axn project. Plain folders can still be opened from the File menu."
+                         TextWrapping="Wrap" Classes="muted" />
+              <Button Content="Open .axn project..." Classes="primary" HorizontalAlignment="Left" Click="OpenProject_Click" />
+            </StackPanel>
+          </Border>
+
+          <Border Grid.Column="1" Classes="panel" Padding="20">
+            <StackPanel Spacing="12">
+              <TextBlock Text="Development tools" FontSize="18" FontWeight="SemiBold" />
+              <TextBlock Text="Check which compilers, SDKs and build tools are available on this machine."
+                         TextWrapping="Wrap" Classes="muted" />
+              <Button Content="Manage toolchains" HorizontalAlignment="Left" Click="Toolchains_Click" />
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <Border Classes="panel" Padding="20">
+          <StackPanel Spacing="10">
+            <TextBlock Text="Starter goals" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="• Fast project opening and normal file editing" />
+            <TextBlock Text="• Axiom-native C++, C#, Rust and Python projects" />
+            <TextBlock Text="• Language servers and debugger adapters later" />
+            <TextBlock Text="• No account requirement, AI service, or telemetry layer" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

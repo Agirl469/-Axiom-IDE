@@ -1,0 +1,40 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.MainWindow"
+    Width="1200"
+    Height="760"
+    MinWidth="900"
+    MinHeight="600"
+    Title="Axiom">
+
+	<Grid RowDefinitions="Auto,*">
+
+		<Menu Grid.Row="0">
+			<MenuItem Header="_File">
+				<MenuItem Header="_New Project" />
+				<MenuItem Header="_Open Project" />
+				<MenuItem Header="Open _Folder" />
+				<Separator />
+				<MenuItem Header="E_xit" />
+			</MenuItem>
+
+			<MenuItem Header="_Edit" />
+			<MenuItem Header="_View" />
+			<MenuItem Header="_Build" />
+
+			<MenuItem Header="_Tools">
+				<MenuItem Header="_Toolchains"
+                          Click="Toolchains_Click" />
+			</MenuItem>
+
+			<MenuItem Header="_Help" />
+		</Menu>
+
+		<ContentControl
+            x:Name="PageHost"
+            Grid.Row="1" />
+
+	</Grid>
+
+</Window>

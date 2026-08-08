@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Axiom.Views.SettingsView">
+  <StackPanel Width="700" HorizontalAlignment="Center" Margin="40,50" Spacing="18">
+    <TextBlock Text="Settings" FontSize="28" FontWeight="SemiBold" />
+    <Border Classes="panel" Padding="18">
+      <StackPanel Spacing="12">
+        <TextBlock Text="Editor" FontSize="18" FontWeight="SemiBold" />
+        <Grid ColumnDefinitions="*,180">
+          <TextBlock Text="Font size" VerticalAlignment="Center" />
+          <NumericUpDown Grid.Column="1" Value="14" Minimum="9" Maximum="30" />
+        </Grid>
+        <Grid ColumnDefinitions="*,180">
+          <TextBlock Text="Tab width" VerticalAlignment="Center" />
+          <NumericUpDown Grid.Column="1" Value="4" Minimum="2" Maximum="8" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Classes="panel" Padding="18">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Privacy" FontSize="18" FontWeight="SemiBold" />
+        <TextBlock Text="This starter has no telemetry, account system, cloud sync, or AI service." Classes="muted" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+
+    <TextBlock Text="These controls are placeholders for the settings service that can be added next." Classes="muted" />
+  </StackPanel>
+</UserControl>

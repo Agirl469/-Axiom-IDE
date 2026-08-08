@@ -1,0 +1,34 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Axiom.App"
+             RequestedThemeVariant="Dark">
+  <Application.Styles>
+    <FluentTheme DensityStyle="Compact" />
+
+    <Style Selector="Window">
+      <Setter Property="Background" Value="#171719" />
+      <Setter Property="Foreground" Value="#E7E7EA" />
+    </Style>
+
+    <Style Selector="Button">
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="12,7" />
+    </Style>
+
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#6F56A8" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="#202023" />
+      <Setter Property="BorderBrush" Value="#303036" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="5" />
+    </Style>
+
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="#A4A4AD" />
+    </Style>
+  </Application.Styles>
+</Application>

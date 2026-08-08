@@ -1,0 +1,44 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.Views.ToolchainsView">
+
+	<Grid RowDefinitions="Auto,Auto,*"
+          Margin="24">
+
+		<TextBlock
+            Grid.Row="0"
+            Text="Toolchains"
+            FontSize="24"
+            FontWeight="SemiBold"
+            Margin="0,0,0,8" />
+
+		<StackPanel
+            Grid.Row="1"
+            Orientation="Horizontal"
+            Spacing="12"
+            Margin="0,0,0,18">
+
+			<TextBlock
+                x:Name="PlatformText"
+                VerticalAlignment="Center"
+                Text="Platform" />
+
+			<Button
+                Content="Scan"
+                Click="Scan_Click" />
+		</StackPanel>
+
+		<ScrollViewer
+            Grid.Row="2"
+            VerticalScrollBarVisibility="Auto">
+
+			<StackPanel
+                x:Name="ToolchainList"
+                Spacing="8" />
+
+		</ScrollViewer>
+
+	</Grid>
+
+</UserControl>
