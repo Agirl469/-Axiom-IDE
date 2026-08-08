@@ -183,7 +183,13 @@ public partial class MainWindow : Window
 
         await dialog.ShowDialog<object?>(this);
     }
-
+    private void CustomizeTheme_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        _pageHost.Content =
+            new ThemeEditorView(_themes);
+    }
     private async void CopyThemeCode_Click(
     object? sender,
     RoutedEventArgs e)

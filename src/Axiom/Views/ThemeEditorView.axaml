@@ -1,0 +1,172 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.Views.ThemeEditorView">
+
+    <Grid Margin="24"
+          ColumnDefinitions="360,*"
+          ColumnSpacing="24">
+
+        <ScrollViewer Grid.Column="0">
+
+            <StackPanel Spacing="16">
+
+                <TextBlock
+                    Text="Theme Editor"
+                    FontSize="26"
+                    FontWeight="SemiBold" />
+
+                <TextBlock
+                    Text="Customize Axiom's interface and editor colors."
+                    Classes="muted"
+                    TextWrapping="Wrap" />
+
+                <StackPanel Spacing="6">
+
+                    <TextBlock Text="Theme name" />
+
+                    <TextBox
+                        x:Name="ThemeNameBox" />
+
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+
+                    <TextBlock Text="Author" />
+
+                    <TextBox
+                        x:Name="AuthorBox" />
+
+                </StackPanel>
+
+                <Separator />
+
+                <TextBlock
+                    Text="Interface"
+                    FontSize="18"
+                    FontWeight="SemiBold" />
+
+                <TextBlock Text="Background" />
+                <TextBox x:Name="BackgroundBox" />
+
+                <TextBlock Text="Panel" />
+                <TextBox x:Name="PanelBox" />
+
+                <TextBlock Text="Border" />
+                <TextBox x:Name="BorderBox" />
+
+                <TextBlock Text="Foreground" />
+                <TextBox x:Name="ForegroundBox" />
+
+                <TextBlock Text="Muted text" />
+                <TextBox x:Name="MutedBox" />
+
+                <TextBlock Text="Accent" />
+                <TextBox x:Name="AccentBox" />
+
+                <Separator />
+
+                <TextBlock
+                    Text="Editor"
+                    FontSize="18"
+                    FontWeight="SemiBold" />
+
+                <TextBlock Text="Editor background" />
+                <TextBox x:Name="EditorBackgroundBox" />
+
+                <TextBlock Text="Editor text" />
+                <TextBox x:Name="EditorForegroundBox" />
+
+                <TextBlock Text="Selection" />
+                <TextBox x:Name="SelectionBox" />
+
+                <StackPanel
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    Margin="0,10,0,0">
+
+                    <Button
+                        Content="Apply"
+                        Classes="primary"
+                        Click="Apply_Click" />
+
+                    <Button
+                        Content="Reset Dark"
+                        Click="ResetDark_Click" />
+
+                    <Button
+                        Content="Reset Light"
+                        Click="ResetLight_Click" />
+
+                </StackPanel>
+
+                <TextBlock
+                    x:Name="StatusText"
+                    Classes="muted"
+                    TextWrapping="Wrap" />
+
+            </StackPanel>
+
+        </ScrollViewer>
+
+        <Border
+            Grid.Column="1"
+            Classes="panel"
+            Padding="18">
+
+            <Grid RowDefinitions="Auto,*">
+
+                <TextBlock
+                    Text="Preview"
+                    FontSize="18"
+                    FontWeight="SemiBold"
+                    Margin="0,0,0,12" />
+
+                <Border
+                    Grid.Row="1"
+                    x:Name="PreviewBorder"
+                    Padding="18">
+
+                    <StackPanel Spacing="12">
+
+                        <TextBlock
+                            x:Name="PreviewTitle"
+                            Text="Axiom Project"
+                            FontSize="20"
+                            FontWeight="SemiBold" />
+
+                        <TextBlock
+                            x:Name="PreviewMuted"
+                            Text="A small preview of the current theme." />
+
+                        <Border
+                            x:Name="PreviewPanel"
+                            Padding="14"
+                            CornerRadius="5">
+
+                            <StackPanel Spacing="8">
+
+                                <TextBlock
+                                    Text="main.cpp"
+                                    FontWeight="SemiBold" />
+
+                                <TextBlock
+                                    FontFamily="Cascadia Mono, JetBrains Mono, DejaVu Sans Mono, monospace"
+                                    TextWrapping="Wrap"
+                                    Text="#include &lt;iostream&gt;&#10;&#10;int main()&#10;{&#10;    std::cout &lt;&lt; &quot;Hello from Axiom&quot;;&#10;}" />
+
+                            </StackPanel>
+
+                        </Border>
+
+                    </StackPanel>
+
+                </Border>
+
+            </Grid>
+
+        </Border>
+
+    </Grid>
+
+</UserControl>

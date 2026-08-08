@@ -59,6 +59,11 @@
 			</MenuItem>
 			<MenuItem Header="Themes">
 				<MenuItem
+    Header="Customize Theme..."
+    Click="CustomizeTheme_Click" />
+
+				<Separator />
+				<MenuItem
 					Header="Axiom Dark"
 					Click="ThemeDark_Click" />
 
