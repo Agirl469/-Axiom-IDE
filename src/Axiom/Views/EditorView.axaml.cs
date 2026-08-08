@@ -9,6 +9,7 @@ using Axiom.Models;
 using Axiom.Services;
 namespace Axiom.Views;
 
+using Avalonia.Threading;
 
 public partial class EditorView : UserControl
 {
@@ -27,6 +28,7 @@ public partial class EditorView : UserControl
     private bool _loadingEditorText;
     private readonly TextBox _editorBox;
     private readonly TextBox _outputBox;
+    private CancellationTokenSource? _executionCancellation;
     public EditorView(string root)
     {
         _root = root;
@@ -962,7 +964,11 @@ public partial class EditorView : UserControl
         _editorBox.CaretIndex =
             start + value.Length;
     }
-    private async void Build_Click(object? sender, RoutedEventArgs e) => await BuildProjectAsync();
+    private async void Build_Click(object? sender, RoutedEventArgs e)
+    {
+        await BuildProjectAsync();
+    }
+
     private async void Run_Click(object? sender, RoutedEventArgs e)
     {
         await RunProjectAsync();
@@ -974,6 +980,7 @@ public partial class EditorView : UserControl
         {
             _outputBox.Text =
                 "This folder has no .axn project file, so Axiom does not know how to run it.";
+
             return;
         }
 
@@ -983,32 +990,47 @@ public partial class EditorView : UserControl
 
         try
         {
-            var result = _project.Language switch
-            {
-                "cpp" => await RunCppAsync(_project),
+            ProcessResult result =
+                _project.Language switch
+                {
+                    "cpp" =>
+                        await RunCppAsync(_project),
 
-                "csharp" => await RunCSharpAsync(_project),
+                    "csharp" =>
+                        await RunCSharpAsync(_project),
 
-                "rust" => await _process.RunAsync(
-                    "cargo",
-                    "run",
-                    _root),
+                    "rust" =>
+                        await _process.RunAsync(
+                            "cargo",
+                            "run",
+                            _root),
 
-                "python" => await _process.RunAsync(
-                    OperatingSystem.IsWindows() ? "python" : "python3",
-                    $"\"{_project.Entry ?? "src/main.py"}\"",
-                    _root),
+                    "python" =>
+                        await _process.RunAsync(
+                            OperatingSystem.IsWindows()
+                                ? "python"
+                                : "python3",
 
-                "none" => (-1, "Empty projects do not have anything to run."),
+                            $"\"{_project.Entry ?? "src/main.py"}\"",
 
-                _ => (-1, $"No runner is registered for '{_project.Language}'.")
-            };
+                            _root),
+
+                    "none" =>
+                        new ProcessResult(
+                            -1,
+                            "Empty projects do not have anything to run."),
+
+                    _ =>
+                        new ProcessResult(
+                            -1,
+                            $"No runner is registered for '{_project.Language}'.")
+                };
 
             _outputBox.Text =
-                $"Exit code: {result.Item1}" +
+                $"Exit code: {result.ExitCode}" +
                 Environment.NewLine +
                 Environment.NewLine +
-                result.Item2;
+                result.Output;
         }
         catch (Exception ex)
         {
@@ -1020,11 +1042,13 @@ public partial class EditorView : UserControl
         }
     }
 
-    private async Task<(int, string)> RunCppAsync(AxiomProject project)
+    private async Task<ProcessResult> RunCppAsync(
+        AxiomProject project)
     {
-        var build = await BuildCppAsync(project);
+        var build =
+            await BuildCppAsync(project);
 
-        if (build.Item1 != 0)
+        if (build.ExitCode != 0)
             return build;
 
         var outputName =
@@ -1032,11 +1056,12 @@ public partial class EditorView : UserControl
                 ? project.Name + ".exe"
                 : project.Name;
 
-        var executable = Path.Combine(
-            _root,
-            ".axiom",
-            "build",
-            outputName);
+        var executable =
+            Path.Combine(
+                _root,
+                ".axiom",
+                "build",
+                outputName);
 
         return await _process.RunAsync(
             executable,
@@ -1044,10 +1069,149 @@ public partial class EditorView : UserControl
             _root);
     }
 
-    private async Task<(int, string)> RunCSharpAsync(AxiomProject project)
+    private async Task<ProcessResult> RunCSharpAsync(
+        AxiomProject project)
     {
-        var axiomDir = Path.Combine(_root, ".axiom");
-        var generatedDir = Path.Combine(axiomDir, "dotnet");
+        var generatedProject =
+            await CreateDotNetBuildProjectAsync(project);
+
+        return await _process.RunAsync(
+            "dotnet",
+            $"run --project \"{generatedProject}\"",
+            _root);
+    }
+
+    public async Task BuildProjectAsync()
+    {
+        if (_project is null)
+        {
+            _outputBox.Text =
+                "This folder has no .axn project file, so Axiom does not know how to build it.";
+
+            return;
+        }
+
+        await SaveCurrentFileAsync();
+
+        _outputBox.Text = "Building...";
+
+        try
+        {
+            ProcessResult result =
+                _project.Language switch
+                {
+                    "cpp" =>
+                        await BuildCppAsync(_project),
+
+                    "csharp" =>
+                        await BuildCSharpAsync(_project),
+
+                    "rust" =>
+                        await _process.RunAsync(
+                            "cargo",
+                            "build",
+                            _root),
+
+                    "python" =>
+                        new ProcessResult(
+                            0,
+                            "Python projects do not need a compile step."),
+
+                    "none" =>
+                        new ProcessResult(
+                            -1,
+                            "Empty projects do not have anything to build."),
+
+                    _ =>
+                        new ProcessResult(
+                            -1,
+                            $"No builder is registered for '{_project.Language}'.")
+                };
+
+            _outputBox.Text =
+                $"Exit code: {result.ExitCode}" +
+                Environment.NewLine +
+                Environment.NewLine +
+                result.Output;
+        }
+        catch (Exception ex)
+        {
+            _outputBox.Text =
+                "Build could not start." +
+                Environment.NewLine +
+                Environment.NewLine +
+                ex.Message;
+        }
+    }
+
+    private async Task<ProcessResult> BuildCppAsync(
+        AxiomProject project)
+    {
+        var entry =
+            project.Entry
+            ?? "src/main.cpp";
+
+        var buildDir =
+            Path.Combine(
+                _root,
+                ".axiom",
+                "build");
+
+        Directory.CreateDirectory(buildDir);
+
+        var outputName =
+            OperatingSystem.IsWindows()
+                ? project.Name + ".exe"
+                : project.Name;
+
+        var output =
+            Path.Combine(
+                buildDir,
+                outputName);
+
+        var compiler =
+            project.Settings.GetValueOrDefault(
+                "compiler",
+                "g++");
+
+        var standard =
+            project.Settings.GetValueOrDefault(
+                "standard",
+                "c++20");
+
+        var args =
+            $"\"{entry}\" -std={standard} -o \"{output}\"";
+
+        return await _process.RunAsync(
+            compiler,
+            args,
+            _root);
+    }
+
+    private async Task<ProcessResult> BuildCSharpAsync(
+        AxiomProject project)
+    {
+        var generatedProject =
+            await CreateDotNetBuildProjectAsync(project);
+
+        return await _process.RunAsync(
+            "dotnet",
+            $"build \"{generatedProject}\"",
+            _root);
+    }
+
+    private async Task<string> CreateDotNetBuildProjectAsync(
+        AxiomProject project)
+    {
+        var axiomDir =
+            Path.Combine(
+                _root,
+                ".axiom");
+
+        var generatedDir =
+            Path.Combine(
+                axiomDir,
+                "dotnet");
 
         Directory.CreateDirectory(generatedDir);
 
@@ -1057,7 +1221,9 @@ public partial class EditorView : UserControl
                 "net10.0");
 
         var generatedProject =
-            Path.Combine(generatedDir, "build.csproj");
+            Path.Combine(
+                generatedDir,
+                "build.csproj");
 
         var sourceGlob =
             Path.GetFullPath(
@@ -1087,82 +1253,7 @@ public partial class EditorView : UserControl
             generatedProject,
             xml);
 
-        return await _process.RunAsync(
-            "dotnet",
-            $"run --project \"{generatedProject}\"",
-            _root);
-    }
-    public async Task BuildProjectAsync()
-    {
-        if (_project is null)
-        {
-            _outputBox.Text = "This folder has no .axn project file, so Axiom does not know how to build it.";
-            return;
-        }
-
-        _outputBox.Text = "Building...";
-
-        try
-        {
-            var result = _project.Language switch
-            {
-                "cpp" => await BuildCppAsync(_project),
-                "csharp" => await BuildCSharpAsync(_project),
-                "rust" => await _process.RunAsync("cargo", "build", _root),
-                "python" => (0, "Python projects do not need a compile step."),
-                _ => (-1, $"No builder is registered for '{_project.Language}'.")
-            };
-
-            _outputBox.Text = $"Exit code: {result.Item1}{Environment.NewLine}{Environment.NewLine}{result.Item2}";
-        }
-        catch (Exception ex)
-        {
-            _outputBox.Text = $"Build could not start.{Environment.NewLine}{Environment.NewLine}{ex.Message}";
-        }
-    }
-
-    private async Task<(int, string)> BuildCppAsync(AxiomProject project)
-    {
-        var entry = project.Entry ?? "src/main.cpp";
-        var buildDir = Path.Combine(_root, ".axiom", "build");
-        Directory.CreateDirectory(buildDir);
-
-        var outputName = OperatingSystem.IsWindows() ? project.Name + ".exe" : project.Name;
-        var output = Path.Combine(buildDir, outputName);
-        var compiler = project.Settings.GetValueOrDefault("compiler", "g++");
-        var standard = project.Settings.GetValueOrDefault("standard", "c++20");
-        var args = $"\"{entry}\" -std={standard} -o \"{output}\"";
-
-        return await _process.RunAsync(compiler, args, _root);
-    }
-
-    private async Task<(int, string)> BuildCSharpAsync(AxiomProject project)
-    {
-        var axiomDir = Path.Combine(_root, ".axiom");
-        var generatedDir = Path.Combine(axiomDir, "dotnet");
-        Directory.CreateDirectory(generatedDir);
-
-        var targetFramework = project.Settings.GetValueOrDefault("targetFramework", "net10.0");
-        var generatedProject = Path.Combine(generatedDir, "build.csproj");
-        var sourceGlob = Path.GetFullPath(Path.Combine(_root, "src", "**", "*.cs"));
-
-        var xml = $"""
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>{targetFramework}</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="{sourceGlob}" />
-  </ItemGroup>
-</Project>
-""";
-
-        await File.WriteAllTextAsync(generatedProject, xml);
-        return await _process.RunAsync("dotnet", $"build \"{generatedProject}\"", _root);
+        return generatedProject;
     }
 }
 

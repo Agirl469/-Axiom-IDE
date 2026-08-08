@@ -15,8 +15,8 @@
 
 	  <Border Grid.Row="1"
 		  Grid.Column="0"
-		  Background="#1B1B1E"
-		  BorderBrush="#303036"
+	  Background="{DynamicResource AxiomPanel}"
+BorderBrush="{DynamicResource AxiomBorder}"
 		  BorderThickness="0,0,1,0">
 
 		  <Grid RowDefinitions="Auto,Auto,*">
@@ -93,8 +93,8 @@
 		  Grid.Column="1"
 		  RowDefinitions="Auto,*">
 
-		  <Border Background="#202023"
-				  BorderBrush="#303036"
+		  <Border Background="{DynamicResource AxiomPanel}"
+        BorderBrush="{DynamicResource AxiomBorder}"
 				  BorderThickness="0,0,0,1">
 
 			  <ScrollViewer
@@ -131,7 +131,12 @@
 
 	  </Grid>
 
-    <Border Grid.Row="2" Grid.ColumnSpan="2" BorderBrush="#303036" BorderThickness="0,1,0,0" Background="#18181B">
+	  <Border
+	  Grid.Row="2"
+	  Grid.ColumnSpan="2"
+	  BorderBrush="{DynamicResource AxiomBorder}"
+	  BorderThickness="0,1,0,0"
+	  Background="{DynamicResource AxiomBackground}">
       <Grid RowDefinitions="Auto,*">
         <StackPanel Orientation="Horizontal" Spacing="18" Margin="12,7">
           <TextBlock Text="Output" FontWeight="SemiBold" />

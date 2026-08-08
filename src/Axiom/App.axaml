@@ -46,15 +46,22 @@
 	<Application.Styles>
 
 		<FluentTheme />
-
 		<Style Selector="Window">
 			<Setter
-                Property="Background"
-                Value="{DynamicResource AxiomBackground}" />
+				Property="Background"
+				Value="{DynamicResource AxiomBackground}" />
 
 			<Setter
-                Property="Foreground"
-                Value="{DynamicResource AxiomForeground}" />
+				Property="Foreground"
+				Value="{DynamicResource AxiomForeground}" />
+
+			<Setter
+				Property="FontFamily"
+				Value="{DynamicResource AxiomUiFont}" />
+
+			<Setter
+				Property="FontSize"
+				Value="{DynamicResource AxiomUiFontSize}" />
 		</Style>
 
 		<Style Selector="Button">
@@ -67,14 +74,14 @@
                 Value="12,7" />
 		</Style>
 
-		<Style Selector="Button.primary">
+		<Style Selector="Border.panel">
 			<Setter
-                Property="Background"
-                Value="{DynamicResource AxiomAccent}" />
+				Property="Background"
+				Value="{DynamicResource AxiomPanel}" />
 
 			<Setter
-                Property="Foreground"
-                Value="White" />
+				Property="BorderBrush"
+				Value="{DynamicResource AxiomBorder}" />
 		</Style>
 
 		<Style Selector="Border.panel">

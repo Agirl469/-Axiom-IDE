@@ -416,20 +416,18 @@ public partial class ThemeEditorView : UserControl
     }
 
     private void Apply_Click(
-        object? sender,
-        RoutedEventArgs e)
+    object? sender,
+    RoutedEventArgs e)
     {
         try
         {
-            var theme =
-                ReadTheme();
+            var theme = ReadTheme();
 
             _themes.Apply(theme);
-
             UpdatePreview(theme);
 
             _statusText.Text =
-                $"Applied '{theme.Name}'.";
+                $"Applied '{theme.Name}'. Theme changes are now active.";
         }
         catch (Exception ex)
         {
@@ -561,8 +559,7 @@ public partial class ThemeEditorView : UserControl
         object? sender,
         SelectionChangedEventArgs e)
     {
-        // This event can fire while AXAML is loading.
-        // Do not touch the editor fields until initialization is complete.
+
         if (_initializing)
             return;
 

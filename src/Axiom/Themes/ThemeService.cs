@@ -19,8 +19,7 @@ public sealed class ThemeService
         if (Application.Current is null)
             return;
 
-        var resources =
-            Application.Current.Resources;
+        var resources = Application.Current.Resources;
 
         resources["AxiomBackground"] =
             Brush.Parse(theme.Ui.Background);
@@ -48,6 +47,18 @@ public sealed class ThemeService
 
         resources["EditorSelection"] =
             Brush.Parse(theme.Editor.Selection);
+
+        resources["AxiomUiFont"] =
+            new FontFamily(theme.Typography.UiFont);
+
+        resources["AxiomUiFontSize"] =
+            theme.Typography.UiFontSize;
+
+        resources["AxiomEditorFont"] =
+            new FontFamily(theme.Typography.EditorFont);
+
+        resources["AxiomEditorFontSize"] =
+            theme.Typography.EditorFontSize;
     }
 
     public static AxiomTheme CreateAxiomDark()

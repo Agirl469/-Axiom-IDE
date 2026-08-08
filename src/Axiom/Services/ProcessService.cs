@@ -1,34 +1,101 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace Axiom.Services;
 
 public sealed class ProcessService
 {
-    public async Task<(int ExitCode, string Output)> RunAsync(
+    public async Task<ProcessResult> RunAsync(
         string fileName,
         string arguments,
-        string? workingDirectory = null)
+        string? workingDirectory = null,
+        Action<string>? outputReceived = null,
+        CancellationToken cancellationToken = default)
     {
+        var output = new StringBuilder();
+
         var startInfo = new ProcessStartInfo
         {
             FileName = fileName,
             Arguments = arguments,
-            WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
+
+            WorkingDirectory =
+                workingDirectory
+                ?? Environment.CurrentDirectory,
+
+            UseShellExecute = false,
+
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            UseShellExecute = false,
+
             CreateNoWindow = true
         };
 
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
+        using var process = new Process
+        {
+            StartInfo = startInfo,
 
-        var stdout = process.StandardOutput.ReadToEndAsync();
-        var stderr = process.StandardError.ReadToEndAsync();
+            EnableRaisingEvents = true
+        };
 
-        await process.WaitForExitAsync();
-        var output = (await stdout) + (await stderr);
-        return (process.ExitCode, output.Trim());
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is null)
+                return;
+
+            lock (output)
+            {
+                output.AppendLine(e.Data);
+            }
+
+            outputReceived?.Invoke(e.Data);
+        };
+
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is null)
+                return;
+
+            lock (output)
+            {
+                output.AppendLine(e.Data);
+            }
+
+            outputReceived?.Invoke(e.Data);
+        };
+
+        if (!process.Start())
+        {
+            return new ProcessResult(
+                -1,
+                "Process could not be started.");
+        }
+
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        try
+        {
+            await process.WaitForExitAsync(
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            try
+            {
+                if (!process.HasExited)
+                    process.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+            }
+
+            throw;
+        }
+
+        return new ProcessResult(
+            process.ExitCode,
+            output.ToString());
     }
 
     public bool TryStartTerminal(string command)
@@ -37,57 +104,55 @@ public sealed class ProcessService
         {
             if (OperatingSystem.IsWindows())
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoExit -Command \"{command.Replace("\"", "`\"")}\"",
-                    UseShellExecute = true
-                });
+                Process.Start(
+                    new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = $"/k {command}",
+                        UseShellExecute = true
+                    });
+
                 return true;
             }
 
             var terminals = new[]
             {
-                ("kitty", $"bash -lc '{EscapeShell(command)}; exec bash'"),
-                ("konsole", $"-e bash -lc '{EscapeShell(command)}; exec bash'"),
-                ("gnome-terminal", $"-- bash -lc '{EscapeShell(command)}; exec bash'"),
-                ("xfce4-terminal", $"-e \"bash -lc '{EscapeShell(command)}; exec bash'\"")
+                "x-terminal-emulator",
+                "kitty",
+                "konsole",
+                "gnome-terminal"
             };
 
-            foreach (var (terminal, args) in terminals)
+            foreach (var terminal in terminals)
             {
-                if (!CommandExists(terminal))
-                    continue;
-
-                Process.Start(new ProcessStartInfo
+                try
                 {
-                    FileName = terminal,
-                    Arguments = args,
-                    UseShellExecute = false
-                });
-                return true;
+                    Process.Start(
+                        new ProcessStartInfo
+                        {
+                            FileName = terminal,
+                            Arguments =
+                                $"-e sh -c \"{command}; exec $SHELL\"",
+
+                            UseShellExecute = false
+                        });
+
+                    return true;
+                }
+                catch
+                {
+                }
             }
+
+            return false;
         }
         catch
         {
-        }
-
-        return false;
-    }
-
-    private static bool CommandExists(string command)
-    {
-        var path = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrWhiteSpace(path))
             return false;
-
-        return path.Split(Path.PathSeparator)
-            .Select(directory => Path.Combine(directory, command))
-            .Any(File.Exists);
-    }
-
-    private static string EscapeShell(string text)
-    {
-        return text.Replace("'", "'\\''");
+        }
     }
 }
+
+public sealed record ProcessResult(
+    int ExitCode,
+    string Output);
