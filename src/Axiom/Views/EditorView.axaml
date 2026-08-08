@@ -20,22 +20,44 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,*">
-      <Border Background="#202023" BorderBrush="#303036" BorderThickness="0,0,0,1" Padding="10,6">
-        <TextBlock x:Name="CurrentFileText" Text="No file open" Classes="muted" />
-      </Border>
-      <TextBox x:Name="EditorBox"
-               Grid.Row="1"
-               AcceptsReturn="True"
-               AcceptsTab="True"
-               TextWrapping="NoWrap"
-               FontFamily="Cascadia Mono, JetBrains Mono, DejaVu Sans Mono, monospace"
-               FontSize="14"
-               Padding="14"
-               BorderThickness="0"
-               ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                ScrollViewer.VerticalScrollBarVisibility="Auto" />
-    </Grid>
+	  <Grid Grid.Row="1"
+		  Grid.Column="1"
+		  RowDefinitions="Auto,*">
+
+		  <Border Background="#202023"
+				  BorderBrush="#303036"
+				  BorderThickness="0,0,0,1">
+
+			  <ScrollViewer
+				  HorizontalScrollBarVisibility="Auto"
+				  VerticalScrollBarVisibility="Disabled">
+
+				  <StackPanel
+					  x:Name="TabBar"
+					  Orientation="Horizontal"
+					  Spacing="2"
+					  Margin="4,3" />
+
+			  </ScrollViewer>
+
+		  </Border>
+
+		  <TextBox
+			  x:Name="EditorBox"
+			  Grid.Row="1"
+			  AcceptsReturn="True"
+			  AcceptsTab="True"
+			  TextWrapping="NoWrap"
+			  FontFamily="Cascadia Mono, JetBrains Mono, DejaVu Sans Mono, monospace"
+			  FontSize="14"
+			  Padding="14"
+			  BorderThickness="0"
+			  TextChanged="EditorBox_TextChanged"
+			  KeyDown="EditorBox_KeyDown"
+			  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+			  ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+	  </Grid>
 
     <Border Grid.Row="2" Grid.ColumnSpan="2" BorderBrush="#303036" BorderThickness="0,1,0,0" Background="#18181B">
       <Grid RowDefinitions="Auto,*">

@@ -1,10 +1,14 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using Axiom.Editor;
 using Axiom.Models;
 using Axiom.Services;
-
 namespace Axiom.Views;
+
 
 public partial class EditorView : UserControl
 {
@@ -12,60 +16,126 @@ public partial class EditorView : UserControl
     private readonly ProcessService _process = new();
     private readonly string _root;
     private AxiomProject? _project;
-    private string? _currentFile;
+   
     private readonly ListBox _fileList;
     private readonly TextBlock _projectKindText;
-    private readonly TextBlock _currentFileText;
+    private readonly StackPanel _tabBar;
+
+    private readonly List<EditorTab> _tabs = new();
+    private EditorTab? _activeTab;
+
+    private bool _loadingEditorText;
     private readonly TextBox _editorBox;
     private readonly TextBox _outputBox;
     public EditorView(string root)
     {
         _root = root;
+
+        AvaloniaXamlLoader.Load(this);
+
         _fileList = this.FindControl<ListBox>("FileList")
-    ?? throw new InvalidOperationException("FileList was not found.");
+            ?? throw new InvalidOperationException(
+                "FileList was not found.");
 
-        _projectKindText = this.FindControl<TextBlock>("ProjectKindText")
-            ?? throw new InvalidOperationException("ProjectKindText was not found.");
-
-        _currentFileText = this.FindControl<TextBlock>("CurrentFileText")
-            ?? throw new InvalidOperationException("CurrentFileText was not found.");
+        _projectKindText =
+            this.FindControl<TextBlock>("ProjectKindText")
+            ?? throw new InvalidOperationException(
+                "ProjectKindText was not found.");
 
         _editorBox = this.FindControl<TextBox>("EditorBox")
-            ?? throw new InvalidOperationException("EditorBox was not found.");
+            ?? throw new InvalidOperationException(
+                "EditorBox was not found.");
 
         _outputBox = this.FindControl<TextBox>("OutputBox")
-            ?? throw new InvalidOperationException("OutputBox was not found.");
-        AvaloniaXamlLoader.Load(this);
+            ?? throw new InvalidOperationException(
+                "OutputBox was not found.");
+
+        _tabBar = this.FindControl<StackPanel>("TabBar")
+            ?? throw new InvalidOperationException(
+                "TabBar was not found.");
+
         _ = LoadProjectAsync();
     }
     public void Undo()
     {
-        EditorBox.Undo();
+        _editorBox.Undo();
     }
 
     public void Redo()
     {
-        EditorBox.Redo();
+        _editorBox.Redo();
     }
-
 
     private async Task LoadProjectAsync()
     {
         _project = await _projects.LoadAsync(_root);
-        var files = _projects.GetSourceFiles(_root).ToList();
+
+        var files =
+            _projects.GetSourceFiles(_root).ToList();
 
         _fileList.ItemsSource =
-    files.Select(path => new ProjectFileItem(_root, path)).ToList();
-        var title = _project?.Name ?? Path.GetFileName(_root);
-        ProjectKindText.Text = $"{title} · {_projects.Describe(_project)}";
-        OutputBox.Text = _project is null
-            ? $"Opened {_root}{Environment.NewLine}No .axn project file found; this folder is in loose-file mode."
-            : $"Opened {_root}{Environment.NewLine}{files.Count} files found.";
-    }
+            files
+                .Select(path =>
+                    new ProjectFileItem(_root, path))
+                .ToList();
 
-    private async void FileList_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+        var title =
+            _project?.Name
+            ?? Path.GetFileName(_root);
+
+        _projectKindText.Text =
+            $"{title} · {_projects.Describe(_project)}";
+
+        _outputBox.Text =
+            _project is null
+                ? $"Opened {_root}{Environment.NewLine}" +
+                  "No .axn project file found; this folder is in loose-file mode."
+                : $"Opened {_root}{Environment.NewLine}" +
+                  $"{files.Count} files found.";
+
+        if (_project is not null &&
+            !string.IsNullOrWhiteSpace(_project.Entry))
+        {
+            var entry =
+                Path.Combine(
+                    _root,
+                    _project.Entry);
+
+            if (File.Exists(entry))
+                await OpenFileAsync(entry);
+        }
+    }
+    private void EditorBox_KeyDown(
+    object? sender,
+    KeyEventArgs e)
     {
-        if (FileList.SelectedItem is ProjectFileItem item)
+        if (_activeTab is null)
+            return;
+
+        if (e.Key == Key.Enter)
+        {
+            InsertIndentedNewLine();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Tab)
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                RemoveIndent();
+            else
+                InsertText(new string(
+                    ' ',
+                    IndentationService.TabSize));
+
+            e.Handled = true;
+        }
+    }
+    private async void FileList_SelectionChanged(
+    object? sender,
+    SelectionChangedEventArgs e)
+    {
+        if (_fileList.SelectedItem is ProjectFileItem item)
             await OpenFileAsync(item.FullPath);
     }
 
@@ -75,25 +145,309 @@ public partial class EditorView : UserControl
     {
         try
         {
-            _currentFile = path;
-            CurrentFileText.Text = Path.GetRelativePath(_root, path);
-            EditorBox.Text = await File.ReadAllTextAsync(path);
+            var existing = _tabs.FirstOrDefault(
+                tab => string.Equals(
+                    tab.FilePath,
+                    path,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (existing is not null)
+            {
+                ActivateTab(existing);
+                return;
+            }
+
+            var text =
+                await File.ReadAllTextAsync(path);
+
+            var tab = new EditorTab
+            {
+                FilePath = path,
+                FileName = Path.GetFileName(path),
+                Language = LanguageService.FromFile(path),
+                Text = text,
+                IsDirty = false
+            };
+
+            _tabs.Add(tab);
+
+            ActivateTab(tab);
+            RefreshTabBar();
         }
         catch (Exception ex)
         {
-            OutputBox.Text = ex.Message;
+            _outputBox.Text = ex.Message;
         }
     }
 
-    public async Task SaveCurrentFileAsync()
-    {
-        if (_currentFile is null)
-            return;
 
-        await File.WriteAllTextAsync(_currentFile, EditorBox.Text ?? string.Empty);
-        OutputBox.Text = $"Saved {Path.GetRelativePath(_root, _currentFile)}";
+    private void ActivateTab(EditorTab tab)
+    {
+        StoreActiveTab();
+
+        _activeTab = tab;
+
+        _loadingEditorText = true;
+
+        _editorBox.Text = tab.Text;
+
+        _editorBox.CaretIndex =
+            Math.Clamp(
+                tab.CaretIndex,
+                0,
+                tab.Text.Length);
+
+        _loadingEditorText = false;
+
+        RefreshTabBar();
+
+        _editorBox.Focus();
     }
 
+
+    private void StoreActiveTab()
+    {
+        if (_activeTab is null)
+            return;
+
+        _activeTab.Text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        _activeTab.CaretIndex =
+            _editorBox.CaretIndex;
+    }
+
+    private void RefreshTabBar()
+    {
+        _tabBar.Children.Clear();
+
+        foreach (var tab in _tabs)
+        {
+            var openButton = new Button
+            {
+                Content = tab.DisplayName,
+                Padding = new Thickness(10, 5),
+                FontWeight =
+                    ReferenceEquals(tab, _activeTab)
+                        ? Avalonia.Media.FontWeight.SemiBold
+                        : Avalonia.Media.FontWeight.Normal
+            };
+
+            openButton.Click += (_, _) =>
+            {
+                ActivateTab(tab);
+            };
+
+            var closeButton = new Button
+            {
+                Content = "×",
+                Padding = new Thickness(7, 5)
+            };
+
+            closeButton.Click += async (_, _) =>
+            {
+                await CloseTabAsync(tab);
+            };
+
+            var tabGroup = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 1
+            };
+
+            tabGroup.Children.Add(openButton);
+            tabGroup.Children.Add(closeButton);
+
+            _tabBar.Children.Add(tabGroup);
+        }
+    }
+
+
+    private async Task CloseTabAsync(EditorTab tab)
+    {
+        if (ReferenceEquals(tab, _activeTab))
+            StoreActiveTab();
+
+        if (tab.IsDirty)
+            await SaveTabAsync(tab);
+
+        var index = _tabs.IndexOf(tab);
+
+        _tabs.Remove(tab);
+
+        if (ReferenceEquals(tab, _activeTab))
+        {
+            _activeTab = null;
+
+            if (_tabs.Count > 0)
+            {
+                var nextIndex =
+                    Math.Clamp(
+                        index,
+                        0,
+                        _tabs.Count - 1);
+
+                ActivateTab(_tabs[nextIndex]);
+            }
+            else
+            {
+                _loadingEditorText = true;
+
+                _editorBox.Text = string.Empty;
+
+                _loadingEditorText = false;
+            }
+        }
+
+        RefreshTabBar();
+    }
+
+    private async Task SaveTabAsync(EditorTab tab)
+    {
+        await File.WriteAllTextAsync(
+            tab.FilePath,
+            tab.Text);
+
+        tab.IsDirty = false;
+
+        _outputBox.Text =
+            $"Saved {Path.GetRelativePath(_root, tab.FilePath)}";
+
+        RefreshTabBar();
+    }
+    public async Task SaveCurrentFileAsync()
+    {
+        if (_activeTab is null)
+            return;
+
+        StoreActiveTab();
+
+        await SaveTabAsync(_activeTab);
+    }
+    private void EditorBox_TextChanged(
+    object? sender,
+    TextChangedEventArgs e)
+    {
+        if (_loadingEditorText ||
+            _activeTab is null)
+        {
+            return;
+        }
+
+        _activeTab.Text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        if (!_activeTab.IsDirty)
+        {
+            _activeTab.IsDirty = true;
+            RefreshTabBar();
+        }
+    }
+    private void InsertIndentedNewLine()
+    {
+        var text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        var caret =
+            _editorBox.CaretIndex;
+
+        var lineStart =
+            text.LastIndexOf(
+                '\n',
+                Math.Max(0, caret - 1));
+
+        lineStart =
+            lineStart < 0
+                ? 0
+                : lineStart + 1;
+
+        var currentLine =
+            text.Substring(
+                lineStart,
+                caret - lineStart);
+
+        var indent =
+            IndentationService.GetIndentForNewLine(
+                _activeTab!.Language,
+                currentLine);
+
+        InsertText(
+            Environment.NewLine + indent);
+    }
+    private void RemoveIndent()
+    {
+        var text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        var caret =
+            _editorBox.CaretIndex;
+
+        if (caret == 0)
+            return;
+
+        var lineStart =
+            text.LastIndexOf(
+                '\n',
+                Math.Max(0, caret - 1));
+
+        lineStart =
+            lineStart < 0
+                ? 0
+                : lineStart + 1;
+
+        var removeCount = 0;
+
+        while (
+            removeCount < IndentationService.TabSize &&
+            lineStart + removeCount < text.Length &&
+            text[lineStart + removeCount] == ' ')
+        {
+            removeCount++;
+        }
+
+        if (removeCount == 0)
+            return;
+
+        _editorBox.Text =
+            text.Remove(
+                lineStart,
+                removeCount);
+
+        _editorBox.CaretIndex =
+            Math.Max(
+                lineStart,
+                caret - removeCount);
+    }
+    private void InsertText(string value)
+    {
+        var text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        var start =
+            Math.Min(
+                _editorBox.SelectionStart,
+                _editorBox.SelectionEnd);
+
+        var end =
+            Math.Max(
+                _editorBox.SelectionStart,
+                _editorBox.SelectionEnd);
+
+        var newText =
+            text[..start] +
+            value +
+            text[end..];
+
+        _editorBox.Text = newText;
+
+        _editorBox.CaretIndex =
+            start + value.Length;
+    }
     private async void Build_Click(object? sender, RoutedEventArgs e) => await BuildProjectAsync();
     private async void Run_Click(object? sender, RoutedEventArgs e)
     {
@@ -104,14 +458,14 @@ public partial class EditorView : UserControl
     {
         if (_project is null)
         {
-            OutputBox.Text =
+            _outputBox.Text =
                 "This folder has no .axn project file, so Axiom does not know how to run it.";
             return;
         }
 
         await SaveCurrentFileAsync();
 
-        OutputBox.Text = "Running...";
+        _outputBox.Text = "Running...";
 
         try
         {
@@ -136,7 +490,7 @@ public partial class EditorView : UserControl
                 _ => (-1, $"No runner is registered for '{_project.Language}'.")
             };
 
-            OutputBox.Text =
+            _outputBox.Text =
                 $"Exit code: {result.Item1}" +
                 Environment.NewLine +
                 Environment.NewLine +
@@ -144,7 +498,7 @@ public partial class EditorView : UserControl
         }
         catch (Exception ex)
         {
-            OutputBox.Text =
+            _outputBox.Text =
                 "Run could not start." +
                 Environment.NewLine +
                 Environment.NewLine +
