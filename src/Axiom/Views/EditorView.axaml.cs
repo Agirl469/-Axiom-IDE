@@ -1,41 +1,61 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+
+using Axiom.Build;
 using Axiom.Editor;
 using Axiom.Models;
 using Axiom.Services;
-namespace Axiom.Views;
 
-using Avalonia.Threading;
+namespace Axiom.Views;
 
 public partial class EditorView : UserControl
 {
     private readonly ProjectService _projects = new();
     private readonly ProcessService _process = new();
+    private readonly KeybindService _keybinds = new();
     private readonly string _root;
+
     private AxiomProject? _project;
+    private EditorTab? _activeTab;
 
     private readonly TreeView _projectTree;
     private readonly TextBlock _projectKindText;
     private readonly StackPanel _tabBar;
+    private readonly TextBox _editorBox;
+
+    private readonly TextBox _outputBox;
+    private readonly ListBox _problemsList;
+
+    private readonly Grid _terminalPanel;
+    private readonly TextBox _terminalOutput;
+    private readonly TextBox _terminalInput;
 
     private readonly List<EditorTab> _tabs = new();
-    private EditorTab? _activeTab;
+    private readonly List<BuildProblem> _problems = new();
 
     private bool _loadingEditorText;
-    private readonly TextBox _editorBox;
-    private readonly TextBox _outputBox;
     private CancellationTokenSource? _executionCancellation;
+
     public EditorView(string root)
     {
         _root = root;
 
         AvaloniaXamlLoader.Load(this);
 
-        _projectTree = this.FindControl<TreeView>("ProjectTree")
+        _projectTree =
+            this.FindControl<TreeView>("ProjectTree")
             ?? throw new InvalidOperationException(
                 "ProjectTree was not found.");
 
@@ -44,20 +64,46 @@ public partial class EditorView : UserControl
             ?? throw new InvalidOperationException(
                 "ProjectKindText was not found.");
 
-        _editorBox = this.FindControl<TextBox>("EditorBox")
-            ?? throw new InvalidOperationException(
-                "EditorBox was not found.");
-
-        _outputBox = this.FindControl<TextBox>("OutputBox")
-            ?? throw new InvalidOperationException(
-                "OutputBox was not found.");
-
-        _tabBar = this.FindControl<StackPanel>("TabBar")
+        _tabBar =
+            this.FindControl<StackPanel>("TabBar")
             ?? throw new InvalidOperationException(
                 "TabBar was not found.");
 
+        _editorBox =
+            this.FindControl<TextBox>("EditorBox")
+            ?? throw new InvalidOperationException(
+                "EditorBox was not found.");
+
+        _outputBox =
+            this.FindControl<TextBox>("OutputBox")
+            ?? throw new InvalidOperationException(
+                "OutputBox was not found.");
+
+        _problemsList =
+            this.FindControl<ListBox>("ProblemsList")
+            ?? throw new InvalidOperationException(
+                "ProblemsList was not found.");
+
+        _terminalPanel =
+            this.FindControl<Grid>("TerminalPanel")
+            ?? throw new InvalidOperationException(
+                "TerminalPanel was not found.");
+
+        _terminalOutput =
+            this.FindControl<TextBox>("TerminalOutput")
+            ?? throw new InvalidOperationException(
+                "TerminalOutput was not found.");
+
+        _terminalInput =
+            this.FindControl<TextBox>("TerminalInput")
+            ?? throw new InvalidOperationException(
+                "TerminalInput was not found.");
+
+        ShowBottomPanel("output");
+
         _ = LoadProjectAsync();
     }
+
     public void Undo()
     {
         _editorBox.Undo();
@@ -70,92 +116,125 @@ public partial class EditorView : UserControl
 
     private async Task LoadProjectAsync()
     {
-        _project = await _projects.LoadAsync(_root);
-
-        var files =
-            _projects.GetSourceFiles(_root).ToList();
-
-        RefreshProjectTree();
-
-        var title =
-            _project?.Name
-            ?? Path.GetFileName(_root);
-
-        _projectKindText.Text =
-            $"{title} · {_projects.Describe(_project)}";
-
-        _outputBox.Text =
-            _project is null
-                ? $"Opened {_root}{Environment.NewLine}" +
-                  "No .axn project file found; this folder is in loose-file mode."
-                : $"Opened {_root}{Environment.NewLine}" +
-                  $"{files.Count} files found.";
-
-        if (_project is not null &&
-            !string.IsNullOrWhiteSpace(_project.Entry))
+        try
         {
-            var entry =
-                Path.Combine(
-                    _root,
-                    _project.Entry);
+            _project =
+                await _projects.LoadAsync(_root);
 
-            if (File.Exists(entry))
-                await OpenFileAsync(entry);
+            RefreshProjectTree();
+
+            var files =
+                _projects
+                    .GetSourceFiles(_root)
+                    .ToList();
+
+            var title =
+                _project?.Name
+                ?? Path.GetFileName(_root);
+
+            _projectKindText.Text =
+                $"{title} · {_projects.Describe(_project)}";
+
+            _outputBox.Text =
+                _project is null
+                    ? $"Opened {_root}{Environment.NewLine}" +
+                      "No .axn project file found; this folder is in loose-file mode."
+                    : $"Opened {_root}{Environment.NewLine}" +
+                      $"{files.Count} files found.";
+
+            if (_project is not null &&
+                !string.IsNullOrWhiteSpace(_project.Entry))
+            {
+                var entry =
+                    Path.Combine(
+                        _root,
+                        _project.Entry);
+
+                if (File.Exists(entry))
+                    await OpenFileAsync(entry);
+            }
+        }
+        catch (Exception ex)
+        {
+            _outputBox.Text =
+                $"Could not load project.{Environment.NewLine}{ex.Message}";
         }
     }
-    private void EditorBox_KeyDown(
-    object? sender,
-    KeyEventArgs e)
+
+    private void OutputTab_Click(
+        object? sender,
+        RoutedEventArgs e)
     {
-        if (_activeTab is null)
-            return;
-
-        if (e.Key == Key.Enter)
-        {
-            InsertIndentedNewLine();
-            e.Handled = true;
-            return;
-        }
-
-        if (e.Key == Key.Tab)
-        {
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
-                RemoveIndent();
-            else
-                InsertText(new string(
-                    ' ',
-                    IndentationService.TabSize));
-
-            e.Handled = true;
-        }
+        ShowBottomPanel("output");
     }
+
+    private void ProblemsTab_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        ShowBottomPanel("problems");
+    }
+
+    private void TerminalTab_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        ShowBottomPanel("terminal");
+        _terminalInput.Focus();
+    }
+
+    private void ShowBottomPanel(string panel)
+    {
+        _outputBox.IsVisible =
+            panel == "output";
+
+        _problemsList.IsVisible =
+            panel == "problems";
+
+        _terminalPanel.IsVisible =
+            panel == "terminal";
+    }
+
     private void RefreshProjectTree()
     {
-        var rootItem = CreateTreeItem(_root, true);
+        var rootItem =
+            CreateTreeItem(
+                _root,
+                true);
 
         _projectTree.ItemsSource =
-            new[] { rootItem };
+            new[]
+            {
+                rootItem
+            };
     }
 
     private TreeViewItem CreateTreeItem(
-    string path,
-    bool isRoot = false)
+        string path,
+        bool isRoot = false)
     {
-        var isDirectory = Directory.Exists(path);
+        var isDirectory =
+            Directory.Exists(path);
 
-        var item = new TreeViewItem
-        {
-            Header = isRoot
+        var name =
+            isRoot
                 ? Path.GetFileName(
                     Path.GetFullPath(path)
                         .TrimEnd(
                             Path.DirectorySeparatorChar,
                             Path.AltDirectorySeparatorChar))
-                : Path.GetFileName(path),
+                : Path.GetFileName(path);
 
-            Tag = path,
-            IsExpanded = isRoot
-        };
+        if (string.IsNullOrWhiteSpace(name))
+            name = path;
+
+        var item =
+            new TreeViewItem
+            {
+                Header = name,
+                Tag = path,
+                IsExpanded = isRoot
+            };
 
         if (!isDirectory)
             return item;
@@ -165,8 +244,10 @@ public partial class EditorView : UserControl
             var entries =
                 Directory
                     .EnumerateFileSystemEntries(path)
-                    .Where(entry => !ShouldHideEntry(entry))
-                    .OrderByDescending(Directory.Exists)
+                    .Where(entry =>
+                        !ShouldHideEntry(entry))
+                    .OrderByDescending(
+                        Directory.Exists)
                     .ThenBy(
                         entry => Path.GetFileName(entry),
                         StringComparer.OrdinalIgnoreCase);
@@ -179,7 +260,6 @@ public partial class EditorView : UserControl
         }
         catch
         {
-            // Leave unreadable directories empty.
         }
 
         return item;
@@ -187,14 +267,16 @@ public partial class EditorView : UserControl
 
     private static bool ShouldHideEntry(string path)
     {
-        var name = Path.GetFileName(path);
+        var name =
+            Path.GetFileName(path);
 
         return name is
-            ".axiom" or
             ".git" or
+            ".axiom" or
             "bin" or
             "obj";
     }
+
     private string? GetSelectedPath()
     {
         if (_projectTree.SelectedItem
@@ -205,9 +287,46 @@ public partial class EditorView : UserControl
 
         return item.Tag as string;
     }
+
+    private string GetTargetDirectory()
+    {
+        var selected =
+            GetSelectedPath();
+
+        if (string.IsNullOrWhiteSpace(selected))
+            return _root;
+
+        if (Directory.Exists(selected))
+            return selected;
+
+        return Path.GetDirectoryName(selected)
+            ?? _root;
+    }
+
+    private async void ProjectTree_DoubleTapped(
+        object? sender,
+        TappedEventArgs e)
+    {
+        var path =
+            GetSelectedPath();
+
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        if (File.Exists(path))
+            await OpenFileAsync(path);
+    }
+
+    private void RefreshTree_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        RefreshProjectTree();
+    }
+
     private async void NewFile_Click(
-    object? sender,
-    RoutedEventArgs e)
+        object? sender,
+        RoutedEventArgs e)
     {
         var directory =
             GetTargetDirectory();
@@ -230,7 +349,9 @@ public partial class EditorView : UserControl
         }
 
         var path =
-            Path.Combine(directory, name);
+            Path.Combine(
+                directory,
+                name);
 
         if (File.Exists(path))
         {
@@ -248,308 +369,60 @@ public partial class EditorView : UserControl
 
         await OpenFileAsync(path);
     }
-    private string GetTargetDirectory()
+
+    private async void NewFolder_Click(
+        object? sender,
+        RoutedEventArgs e)
     {
-        var selected = GetSelectedPath();
+        var directory =
+            GetTargetDirectory();
 
-        if (string.IsNullOrWhiteSpace(selected))
-            return _root;
+        var name =
+            await AskForNameAsync(
+                "New Folder",
+                "Folder name",
+                "NewFolder");
 
-        if (Directory.Exists(selected))
-            return selected;
-
-        return Path.GetDirectoryName(selected)
-            ?? _root;
-    }
-
-    private async void DeleteItem_Click(
-    object? sender,
-    RoutedEventArgs e)
-    {
-        var path = GetSelectedPath();
-
-        if (string.IsNullOrWhiteSpace(path))
+        if (string.IsNullOrWhiteSpace(name))
             return;
 
-        if (Path.GetFullPath(path) ==
-            Path.GetFullPath(_root))
+        if (Path.GetFileName(name) != name)
         {
             _outputBox.Text =
-                "The project root cannot be deleted from Axiom.";
+                "Enter a folder name, not a full path.";
 
             return;
         }
 
-        var confirmed =
-            await ConfirmAsync(
-                $"Delete '{Path.GetFileName(path)}'?");
+        var path =
+            Path.Combine(
+                directory,
+                name);
 
-        if (!confirmed)
-            return;
-
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-
-                var tab =
-                    _tabs.FirstOrDefault(
-                        item =>
-                            string.Equals(
-                                item.FilePath,
-                                path,
-                                StringComparison.OrdinalIgnoreCase));
-
-                if (tab is not null)
-                    await CloseDeletedTabAsync(tab);
-            }
-            else if (Directory.Exists(path))
-            {
-                Directory.Delete(
-                    path,
-                    true);
-            }
-
-            RefreshProjectTree();
-        }
-        catch (Exception ex)
+        if (Directory.Exists(path))
         {
             _outputBox.Text =
-                $"Delete failed: {ex.Message}";
-        }
-    }
+                $"'{name}' already exists.";
 
-    private void RefreshTree_Click(
-    object? sender,
-    RoutedEventArgs e)
-    {
+            return;
+        }
+
+        Directory.CreateDirectory(path);
+
         RefreshProjectTree();
     }
 
-
-    private async Task<string?> AskForNameAsync(
-    string title,
-    string label,
-    string initialValue)
-    {
-        var owner =
-            TopLevel.GetTopLevel(this)
-            as Window;
-
-        if (owner is null)
-            return null;
-
-        var input = new TextBox
-        {
-            Text = initialValue,
-            MinWidth = 320
-        };
-
-        var dialog =
-            new Window
-            {
-                Title = title,
-                Width = 400,
-                Height = 180,
-                CanResize = false,
-                WindowStartupLocation =
-                    WindowStartupLocation.CenterOwner
-            };
-
-        var create =
-            new Button
-            {
-                Content = "OK",
-                MinWidth = 75
-            };
-
-        var cancel =
-            new Button
-            {
-                Content = "Cancel",
-                MinWidth = 75
-            };
-
-        create.Click += (_, _) =>
-        {
-            dialog.Close(
-                input.Text?.Trim());
-        };
-
-        cancel.Click += (_, _) =>
-        {
-            dialog.Close(null);
-        };
-
-        dialog.Content =
-            new StackPanel
-            {
-                Margin = new Thickness(18),
-                Spacing = 10,
-
-                Children =
-                {
-                new TextBlock
-                {
-                    Text = label
-                },
-
-                input,
-
-                new StackPanel
-                {
-                    Orientation =
-                        Orientation.Horizontal,
-
-                    HorizontalAlignment =
-                        HorizontalAlignment.Right,
-
-                    Spacing = 8,
-
-                    Children =
-                    {
-                        cancel,
-                        create
-                    }
-                }
-                }
-            };
-
-        return await dialog
-            .ShowDialog<string?>(owner);
-    }
-
-
-    private async Task<bool> ConfirmAsync(
-    string message)
-    {
-        var owner =
-            TopLevel.GetTopLevel(this)
-            as Window;
-
-        if (owner is null)
-            return false;
-
-        var dialog =
-            new Window
-            {
-                Title = "Axiom",
-                Width = 380,
-                Height = 160,
-                CanResize = false,
-                WindowStartupLocation =
-                    WindowStartupLocation.CenterOwner
-            };
-
-        var yes =
-            new Button
-            {
-                Content = "Delete",
-                MinWidth = 80
-            };
-
-        var no =
-            new Button
-            {
-                Content = "Cancel",
-                MinWidth = 80
-            };
-
-        yes.Click += (_, _) =>
-            dialog.Close(true);
-
-        no.Click += (_, _) =>
-            dialog.Close(false);
-
-        dialog.Content =
-            new StackPanel
-            {
-                Margin = new Thickness(18),
-                Spacing = 14,
-
-                Children =
-                {
-                new TextBlock
-                {
-                    Text = message,
-                    TextWrapping =
-                        Avalonia.Media.TextWrapping.Wrap
-                },
-
-                new StackPanel
-                {
-                    Orientation =
-                        Orientation.Horizontal,
-
-                    HorizontalAlignment =
-                        HorizontalAlignment.Right,
-
-                    Spacing = 8,
-
-                    Children =
-                    {
-                        no,
-                        yes
-                    }
-                }
-                }
-            };
-
-        return await dialog
-            .ShowDialog<bool>(owner);
-    }
-
-
-
-
-    private async Task CloseDeletedTabAsync(
-    EditorTab tab)
-    {
-        var index =
-            _tabs.IndexOf(tab);
-
-        _tabs.Remove(tab);
-
-        if (ReferenceEquals(
-            _activeTab,
-            tab))
-        {
-            _activeTab = null;
-
-            _loadingEditorText = true;
-            _editorBox.Text = string.Empty;
-            _loadingEditorText = false;
-
-            if (_tabs.Count > 0)
-            {
-                var next =
-                    Math.Clamp(
-                        index,
-                        0,
-                        _tabs.Count - 1);
-
-                ActivateTab(
-                    _tabs[next]);
-            }
-        }
-
-        RefreshTabBar();
-
-        await Task.CompletedTask;
-    }
-
     private async void RenameItem_Click(
-    object? sender,
-    RoutedEventArgs e)
+        object? sender,
+        RoutedEventArgs e)
     {
-        var oldPath = GetSelectedPath();
+        var oldPath =
+            GetSelectedPath();
 
         if (string.IsNullOrWhiteSpace(oldPath))
             return;
 
-        if (Path.GetFullPath(oldPath) ==
-            Path.GetFullPath(_root))
+        if (PathsEqual(oldPath, _root))
         {
             _outputBox.Text =
                 "The project root cannot be renamed from here.";
@@ -579,7 +452,9 @@ public partial class EditorView : UserControl
             return;
 
         var newPath =
-            Path.Combine(parent, newName);
+            Path.Combine(
+                parent,
+                newName);
 
         try
         {
@@ -588,6 +463,33 @@ public partial class EditorView : UserControl
                 File.Move(
                     oldPath,
                     newPath);
+
+                var tab =
+                    _tabs.FirstOrDefault(
+                        item =>
+                            PathsEqual(
+                                item.FilePath,
+                                oldPath));
+
+                if (tab is not null)
+                {
+                    var wasActive =
+                        ReferenceEquals(
+                            _activeTab,
+                            tab);
+
+                    if (wasActive)
+                        StoreActiveTab();
+
+                    _tabs.Remove(tab);
+
+                    if (wasActive)
+                        _activeTab = null;
+
+                    RefreshTabBar();
+
+                    await OpenFileAsync(newPath);
+                }
             }
             else if (Directory.Exists(oldPath))
             {
@@ -604,68 +506,126 @@ public partial class EditorView : UserControl
                 $"Rename failed: {ex.Message}";
         }
     }
-    private async void NewFolder_Click(
-    object? sender,
-    RoutedEventArgs e)
+
+    private async void DeleteItem_Click(
+        object? sender,
+        RoutedEventArgs e)
     {
-        var directory =
-            GetTargetDirectory();
-
-        var name =
-            await AskForNameAsync(
-                "New Folder",
-                "Folder name",
-                "NewFolder");
-
-        if (string.IsNullOrWhiteSpace(name))
-            return;
-
-        if (Path.GetFileName(name) != name)
-        {
-            _outputBox.Text =
-                "Enter a folder name, not a full path.";
-
-            return;
-        }
-
         var path =
-            Path.Combine(directory, name);
+            GetSelectedPath();
 
-        if (Directory.Exists(path))
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        if (PathsEqual(path, _root))
         {
             _outputBox.Text =
-                $"'{name}' already exists.";
+                "The project root cannot be deleted from Axiom.";
 
             return;
         }
 
-        Directory.CreateDirectory(path);
+        var confirmed =
+            await ConfirmAsync(
+                $"Delete '{Path.GetFileName(path)}'?");
 
-        RefreshProjectTree();
-    }
-    private async void ProjectTree_DoubleTapped(
-    object? sender,
-    TappedEventArgs e)
-    {
-        var path = GetSelectedPath();
-
-        if (path is null)
+        if (!confirmed)
             return;
 
-        if (File.Exists(path))
-            await OpenFileAsync(path);
+        try
+        {
+            if (File.Exists(path))
+            {
+                var tab =
+                    _tabs.FirstOrDefault(
+                        item =>
+                            PathsEqual(
+                                item.FilePath,
+                                path));
+
+                File.Delete(path);
+
+                if (tab is not null)
+                    CloseDeletedTab(tab);
+            }
+            else if (Directory.Exists(path))
+            {
+                var affectedTabs =
+                    _tabs
+                        .Where(tab =>
+                            IsInsideDirectory(
+                                tab.FilePath,
+                                path))
+                        .ToList();
+
+                Directory.Delete(
+                    path,
+                    true);
+
+                foreach (var tab in affectedTabs)
+                    CloseDeletedTab(tab);
+            }
+
+            RefreshProjectTree();
+        }
+        catch (Exception ex)
+        {
+            _outputBox.Text =
+                $"Delete failed: {ex.Message}";
+        }
     }
-    public void OpenFile(string path) => _ = OpenFileAsync(path);
+
+    private void CloseDeletedTab(EditorTab tab)
+    {
+        var index =
+            _tabs.IndexOf(tab);
+
+        var wasActive =
+            ReferenceEquals(
+                _activeTab,
+                tab);
+
+        _tabs.Remove(tab);
+
+        if (wasActive)
+        {
+            _activeTab = null;
+
+            _loadingEditorText = true;
+            _editorBox.Text = string.Empty;
+            _loadingEditorText = false;
+
+            if (_tabs.Count > 0)
+            {
+                var next =
+                    Math.Clamp(
+                        index,
+                        0,
+                        _tabs.Count - 1);
+
+                ActivateTab(
+                    _tabs[next]);
+            }
+        }
+
+        RefreshTabBar();
+    }
+
+    public void OpenFile(string path)
+    {
+        _ = OpenFileAsync(path);
+    }
 
     private async Task OpenFileAsync(string path)
     {
         try
         {
-            var existing = _tabs.FirstOrDefault(
-                tab => string.Equals(
-                    tab.FilePath,
-                    path,
-                    StringComparison.OrdinalIgnoreCase));
+            var existing =
+                _tabs.FirstOrDefault(
+                    tab =>
+                        PathsEqual(
+                            tab.FilePath,
+                            path));
 
             if (existing is not null)
             {
@@ -676,14 +636,19 @@ public partial class EditorView : UserControl
             var text =
                 await File.ReadAllTextAsync(path);
 
-            var tab = new EditorTab
-            {
-                FilePath = path,
-                FileName = Path.GetFileName(path),
-                Language = LanguageService.FromFile(path),
-                Text = text,
-                IsDirty = false
-            };
+            var tab =
+                new EditorTab
+                {
+                    FilePath = path,
+                    FileName =
+                        Path.GetFileName(path),
+
+                    Language =
+                        LanguageService.FromFile(path),
+
+                    Text = text,
+                    IsDirty = false
+                };
 
             _tabs.Add(tab);
 
@@ -692,20 +657,20 @@ public partial class EditorView : UserControl
         }
         catch (Exception ex)
         {
-            _outputBox.Text = ex.Message;
+            _outputBox.Text =
+                ex.Message;
         }
     }
-
 
     private void ActivateTab(EditorTab tab)
     {
         StoreActiveTab();
 
         _activeTab = tab;
-
         _loadingEditorText = true;
 
-        _editorBox.Text = tab.Text;
+        _editorBox.Text =
+            tab.Text;
 
         _editorBox.CaretIndex =
             Math.Clamp(
@@ -719,7 +684,6 @@ public partial class EditorView : UserControl
 
         _editorBox.Focus();
     }
-
 
     private void StoreActiveTab()
     {
@@ -740,59 +704,90 @@ public partial class EditorView : UserControl
 
         foreach (var tab in _tabs)
         {
-            var openButton = new Button
-            {
-                Content = tab.DisplayName,
-                Padding = new Thickness(10, 5),
-                FontWeight =
-                    ReferenceEquals(tab, _activeTab)
-                        ? Avalonia.Media.FontWeight.SemiBold
-                        : Avalonia.Media.FontWeight.Normal
-            };
+            var openButton =
+                new Button
+                {
+                    Content = tab.DisplayName,
 
-            openButton.Click += (_, _) =>
-            {
-                ActivateTab(tab);
-            };
+                    Padding =
+                        new Thickness(
+                            10,
+                            5),
 
-            var closeButton = new Button
-            {
-                Content = "×",
-                Padding = new Thickness(7, 5)
-            };
+                    FontWeight =
+                        ReferenceEquals(
+                            tab,
+                            _activeTab)
+                            ? Avalonia.Media.FontWeight.SemiBold
+                            : Avalonia.Media.FontWeight.Normal
+                };
 
-            closeButton.Click += async (_, _) =>
-            {
-                await CloseTabAsync(tab);
-            };
+            openButton.Click +=
+                (_, _) =>
+                {
+                    ActivateTab(tab);
+                };
 
-            var tabGroup = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 1
-            };
+            var closeButton =
+                new Button
+                {
+                    Content = "×",
 
-            tabGroup.Children.Add(openButton);
-            tabGroup.Children.Add(closeButton);
+                    Padding =
+                        new Thickness(
+                            7,
+                            5)
+                };
 
-            _tabBar.Children.Add(tabGroup);
+            closeButton.Click +=
+                async (_, _) =>
+                {
+                    await CloseTabAsync(tab);
+                };
+
+            var group =
+                new StackPanel
+                {
+                    Orientation =
+                        Orientation.Horizontal,
+
+                    Spacing = 1
+                };
+
+            group.Children.Add(
+                openButton);
+
+            group.Children.Add(
+                closeButton);
+
+            _tabBar.Children.Add(
+                group);
         }
     }
 
-
     private async Task CloseTabAsync(EditorTab tab)
     {
-        if (ReferenceEquals(tab, _activeTab))
+        if (ReferenceEquals(
+                tab,
+                _activeTab))
+        {
             StoreActiveTab();
+        }
 
         if (tab.IsDirty)
             await SaveTabAsync(tab);
 
-        var index = _tabs.IndexOf(tab);
+        var index =
+            _tabs.IndexOf(tab);
+
+        var wasActive =
+            ReferenceEquals(
+                tab,
+                _activeTab);
 
         _tabs.Remove(tab);
 
-        if (ReferenceEquals(tab, _activeTab))
+        if (wasActive)
         {
             _activeTab = null;
 
@@ -804,19 +799,29 @@ public partial class EditorView : UserControl
                         0,
                         _tabs.Count - 1);
 
-                ActivateTab(_tabs[nextIndex]);
+                ActivateTab(
+                    _tabs[nextIndex]);
             }
             else
             {
                 _loadingEditorText = true;
-
                 _editorBox.Text = string.Empty;
-
                 _loadingEditorText = false;
             }
         }
 
         RefreshTabBar();
+    }
+
+    public async Task SaveCurrentFileAsync()
+    {
+        if (_activeTab is null)
+            return;
+
+        StoreActiveTab();
+
+        await SaveTabAsync(
+            _activeTab);
     }
 
     private async Task SaveTabAsync(EditorTab tab)
@@ -827,23 +832,12 @@ public partial class EditorView : UserControl
 
         tab.IsDirty = false;
 
-        _outputBox.Text =
-            $"Saved {Path.GetRelativePath(_root, tab.FilePath)}";
-
         RefreshTabBar();
     }
-    public async Task SaveCurrentFileAsync()
-    {
-        if (_activeTab is null)
-            return;
 
-        StoreActiveTab();
-
-        await SaveTabAsync(_activeTab);
-    }
     private void EditorBox_TextChanged(
-    object? sender,
-    TextChangedEventArgs e)
+        object? sender,
+        TextChangedEventArgs e)
     {
         if (_loadingEditorText ||
             _activeTab is null)
@@ -861,8 +855,126 @@ public partial class EditorView : UserControl
             RefreshTabBar();
         }
     }
+
+
+
+    private void StopExecution()
+    {
+        if (_executionCancellation is null)
+            return;
+
+        if (_executionCancellation.IsCancellationRequested)
+            return;
+
+        _executionCancellation.Cancel();
+
+        AppendOutput("Stopping...");
+    }
+
+    private void Stop_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        StopExecution();
+    }
+    private async void EditorBox_KeyDown(
+    object? sender,
+    KeyEventArgs e)
+    {
+        if (_keybinds.Matches(
+            e,
+            _keybinds.Settings.Save))
+        {
+            e.Handled = true;
+
+            await SaveCurrentFileAsync();
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+            e,
+            _keybinds.Settings.Build))
+        {
+            e.Handled = true;
+
+            await BuildProjectAsync();
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+            e,
+            _keybinds.Settings.Run))
+        {
+            e.Handled = true;
+
+            await RunProjectAsync();
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+            e,
+            _keybinds.Settings.Stop))
+        {
+            e.Handled = true;
+
+            StopExecution();
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+            e,
+            _keybinds.Settings.Terminal))
+        {
+            e.Handled = true;
+
+            ShowBottomPanel("terminal");
+            _terminalInput.Focus();
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+            e,
+            _keybinds.Settings.CloseTab))
+        {
+            e.Handled = true;
+
+            if (_activeTab is not null)
+                await CloseTabAsync(_activeTab);
+
+            return;
+        }
+
+        if (_activeTab is null)
+            return;
+
+        if (e.Key == Key.Enter)
+        {
+            InsertIndentedNewLine();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Tab)
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                RemoveIndent();
+            else
+                InsertText(new string(' ', IndentationService.TabSize));
+
+            e.Handled = true;
+        }
+    }
+
     private void InsertIndentedNewLine()
     {
+        if (_activeTab is null)
+            return;
+
         var text =
             _editorBox.Text
             ?? string.Empty;
@@ -870,10 +982,17 @@ public partial class EditorView : UserControl
         var caret =
             _editorBox.CaretIndex;
 
+        var searchIndex =
+            Math.Max(
+                0,
+                caret - 1);
+
         var lineStart =
-            text.LastIndexOf(
-                '\n',
-                Math.Max(0, caret - 1));
+            caret == 0
+                ? -1
+                : text.LastIndexOf(
+                    '\n',
+                    searchIndex);
 
         lineStart =
             lineStart < 0
@@ -887,12 +1006,42 @@ public partial class EditorView : UserControl
 
         var indent =
             IndentationService.GetIndentForNewLine(
-                _activeTab!.Language,
+                _activeTab.Language,
                 currentLine);
 
         InsertText(
-            Environment.NewLine + indent);
+            Environment.NewLine +
+            indent);
     }
+
+    private void InsertText(string value)
+    {
+        var text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        var start =
+            Math.Min(
+                _editorBox.SelectionStart,
+                _editorBox.SelectionEnd);
+
+        var end =
+            Math.Max(
+                _editorBox.SelectionStart,
+                _editorBox.SelectionEnd);
+
+        var newText =
+            text[..start] +
+            value +
+            text[end..];
+
+        _editorBox.Text =
+            newText;
+
+        _editorBox.CaretIndex =
+            start + value.Length;
+    }
+
     private void RemoveIndent()
     {
         var text =
@@ -908,7 +1057,9 @@ public partial class EditorView : UserControl
         var lineStart =
             text.LastIndexOf(
                 '\n',
-                Math.Max(0, caret - 1));
+                Math.Max(
+                    0,
+                    caret - 1));
 
         lineStart =
             lineStart < 0
@@ -938,40 +1089,38 @@ public partial class EditorView : UserControl
                 lineStart,
                 caret - removeCount);
     }
-    private void InsertText(string value)
-    {
-        var text =
-            _editorBox.Text
-            ?? string.Empty;
 
-        var start =
-            Math.Min(
-                _editorBox.SelectionStart,
-                _editorBox.SelectionEnd);
-
-        var end =
-            Math.Max(
-                _editorBox.SelectionStart,
-                _editorBox.SelectionEnd);
-
-        var newText =
-            text[..start] +
-            value +
-            text[end..];
-
-        _editorBox.Text = newText;
-
-        _editorBox.CaretIndex =
-            start + value.Length;
-    }
-    private async void Build_Click(object? sender, RoutedEventArgs e)
+    private async void Build_Click(
+        object? sender,
+        RoutedEventArgs e)
     {
         await BuildProjectAsync();
     }
 
-    private async void Run_Click(object? sender, RoutedEventArgs e)
+    private async void Run_Click(
+        object? sender,
+        RoutedEventArgs e)
     {
         await RunProjectAsync();
+    }
+
+ 
+
+    private void Terminal_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        ShowBottomPanel("terminal");
+        _terminalInput.Focus();
+    }
+
+    private void BeginExecution()
+    {
+        _executionCancellation?.Cancel();
+        _executionCancellation?.Dispose();
+
+        _executionCancellation =
+            new CancellationTokenSource();
     }
 
     public async Task RunProjectAsync()
@@ -984,9 +1133,14 @@ public partial class EditorView : UserControl
             return;
         }
 
+        BeginExecution();
+
         await SaveCurrentFileAsync();
 
-        _outputBox.Text = "Running...";
+        _outputBox.Text =
+            "Running...";
+
+        ShowBottomPanel("output");
 
         try
         {
@@ -994,26 +1148,25 @@ public partial class EditorView : UserControl
                 _project.Language switch
                 {
                     "cpp" =>
-                        await RunCppAsync(_project),
+                        await RunCppAsync(
+                            _project),
 
                     "csharp" =>
-                        await RunCSharpAsync(_project),
+                        await RunCSharpAsync(
+                            _project),
 
                     "rust" =>
-                        await _process.RunAsync(
+                        await RunProcessAsync(
                             "cargo",
-                            "run",
-                            _root),
+                            "run"),
 
                     "python" =>
-                        await _process.RunAsync(
+                        await RunProcessAsync(
                             OperatingSystem.IsWindows()
                                 ? "python"
                                 : "python3",
 
-                            $"\"{_project.Entry ?? "src/main.py"}\"",
-
-                            _root),
+                            $"\"{_project.Entry ?? "src/main.py"}\""),
 
                     "none" =>
                         new ProcessResult(
@@ -1026,19 +1179,92 @@ public partial class EditorView : UserControl
                             $"No runner is registered for '{_project.Language}'.")
                 };
 
-            _outputBox.Text =
-                $"Exit code: {result.ExitCode}" +
-                Environment.NewLine +
-                Environment.NewLine +
-                result.Output;
+            AppendExecutionSummary(
+                result);
         }
         catch (Exception ex)
         {
+            AppendOutput(
+                $"Run could not start: {ex.Message}");
+        }
+    }
+
+    public async Task BuildProjectAsync()
+    {
+        if (_project is null)
+        {
             _outputBox.Text =
-                "Run could not start." +
-                Environment.NewLine +
-                Environment.NewLine +
-                ex.Message;
+                "This folder has no .axn project file, so Axiom does not know how to build it.";
+
+            return;
+        }
+
+        BeginExecution();
+
+        _problems.Clear();
+        _problemsList.ItemsSource = null;
+
+        await SaveCurrentFileAsync();
+
+        _outputBox.Text =
+            "Building...";
+
+        ShowBottomPanel("output");
+
+        try
+        {
+            ProcessResult result =
+                _project.Language switch
+                {
+                    "cpp" =>
+                        await BuildCppAsync(
+                            _project),
+
+                    "csharp" =>
+                        await BuildCSharpAsync(
+                            _project),
+
+                    "rust" =>
+                        await RunProcessAsync(
+                            "cargo",
+                            "build"),
+
+                    "python" =>
+                        new ProcessResult(
+                            0,
+                            "Python projects do not need a compile step."),
+
+                    "none" =>
+                        new ProcessResult(
+                            -1,
+                            "Empty projects do not have anything to build."),
+
+                    _ =>
+                        new ProcessResult(
+                            -1,
+                            $"No builder is registered for '{_project.Language}'.")
+                };
+
+            if (_project.Language == "python")
+            {
+                AppendOutput(
+                    result.Output);
+            }
+
+            AppendExecutionSummary(
+                result);
+
+            if (result.ExitCode != 0 &&
+                _problems.Count > 0)
+            {
+                ShowBottomPanel(
+                    "problems");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendOutput(
+                $"Build could not start: {ex.Message}");
         }
     }
 
@@ -1063,85 +1289,21 @@ public partial class EditorView : UserControl
                 "build",
                 outputName);
 
-        return await _process.RunAsync(
+        return await RunProcessAsync(
             executable,
-            "",
-            _root);
+            string.Empty);
     }
 
     private async Task<ProcessResult> RunCSharpAsync(
         AxiomProject project)
     {
         var generatedProject =
-            await CreateDotNetBuildProjectAsync(project);
+            await CreateDotNetBuildProjectAsync(
+                project);
 
-        return await _process.RunAsync(
+        return await RunProcessAsync(
             "dotnet",
-            $"run --project \"{generatedProject}\"",
-            _root);
-    }
-
-    public async Task BuildProjectAsync()
-    {
-        if (_project is null)
-        {
-            _outputBox.Text =
-                "This folder has no .axn project file, so Axiom does not know how to build it.";
-
-            return;
-        }
-
-        await SaveCurrentFileAsync();
-
-        _outputBox.Text = "Building...";
-
-        try
-        {
-            ProcessResult result =
-                _project.Language switch
-                {
-                    "cpp" =>
-                        await BuildCppAsync(_project),
-
-                    "csharp" =>
-                        await BuildCSharpAsync(_project),
-
-                    "rust" =>
-                        await _process.RunAsync(
-                            "cargo",
-                            "build",
-                            _root),
-
-                    "python" =>
-                        new ProcessResult(
-                            0,
-                            "Python projects do not need a compile step."),
-
-                    "none" =>
-                        new ProcessResult(
-                            -1,
-                            "Empty projects do not have anything to build."),
-
-                    _ =>
-                        new ProcessResult(
-                            -1,
-                            $"No builder is registered for '{_project.Language}'.")
-                };
-
-            _outputBox.Text =
-                $"Exit code: {result.ExitCode}" +
-                Environment.NewLine +
-                Environment.NewLine +
-                result.Output;
-        }
-        catch (Exception ex)
-        {
-            _outputBox.Text =
-                "Build could not start." +
-                Environment.NewLine +
-                Environment.NewLine +
-                ex.Message;
-        }
+            $"run --project \"{generatedProject}\"");
     }
 
     private async Task<ProcessResult> BuildCppAsync(
@@ -1157,7 +1319,8 @@ public partial class EditorView : UserControl
                 ".axiom",
                 "build");
 
-        Directory.CreateDirectory(buildDir);
+        Directory.CreateDirectory(
+            buildDir);
 
         var outputName =
             OperatingSystem.IsWindows()
@@ -1182,22 +1345,21 @@ public partial class EditorView : UserControl
         var args =
             $"\"{entry}\" -std={standard} -o \"{output}\"";
 
-        return await _process.RunAsync(
+        return await RunProcessAsync(
             compiler,
-            args,
-            _root);
+            args);
     }
 
     private async Task<ProcessResult> BuildCSharpAsync(
         AxiomProject project)
     {
         var generatedProject =
-            await CreateDotNetBuildProjectAsync(project);
+            await CreateDotNetBuildProjectAsync(
+                project);
 
-        return await _process.RunAsync(
+        return await RunProcessAsync(
             "dotnet",
-            $"build \"{generatedProject}\"",
-            _root);
+            $"build \"{generatedProject}\"");
     }
 
     private async Task<string> CreateDotNetBuildProjectAsync(
@@ -1213,7 +1375,8 @@ public partial class EditorView : UserControl
                 axiomDir,
                 "dotnet");
 
-        Directory.CreateDirectory(generatedDir);
+        Directory.CreateDirectory(
+            generatedDir);
 
         var targetFramework =
             project.Settings.GetValueOrDefault(
@@ -1255,6 +1418,510 @@ public partial class EditorView : UserControl
 
         return generatedProject;
     }
-}
 
- 
+    private Task<ProcessResult> RunProcessAsync(
+        string executable,
+        string arguments)
+    {
+        return _process.RunAsync(
+            executable,
+            arguments,
+            _root,
+            line => AppendOutput(line),
+            _executionCancellation?.Token
+                ?? CancellationToken.None);
+    }
+
+    private void AppendOutput(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return;
+
+        var problem =
+            BuildProblemParser.Parse(line);
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (problem is not null)
+            {
+                _problems.Add(problem);
+
+                _problemsList.ItemsSource = null;
+
+                _problemsList.ItemsSource =
+                    _problems.ToList();
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    _outputBox.Text))
+            {
+                _outputBox.Text = line;
+            }
+            else
+            {
+                _outputBox.Text +=
+                    Environment.NewLine +
+                    line;
+            }
+
+            _outputBox.CaretIndex =
+                _outputBox.Text?.Length
+                ?? 0;
+        });
+    }
+
+    private void AppendExecutionSummary(ProcessResult result)
+    {
+        if (result.ExitCode == -1)
+        {
+            var message =
+                string.IsNullOrWhiteSpace(result.Output)
+                    ? "The process could not be started."
+                    : result.Output.Trim();
+
+            AppendOutput(message);
+
+            if (_problems.Count == 0)
+            {
+                _problems.Add(
+                    new BuildProblem
+                    {
+                        Severity = ProblemSeverity.Error,
+                        FilePath = string.Empty,
+                        Line = 0,
+                        Column = 0,
+                        Message = message
+                    });
+
+                _problemsList.ItemsSource = null;
+                _problemsList.ItemsSource = _problems.ToList();
+            }
+
+            AppendOutput("Process could not be started.");
+            return;
+        }
+
+        AppendOutput(
+            $"Process exited with code {result.ExitCode}.");
+
+        if (_problems.Count > 0)
+        {
+            AppendOutput(
+                $"{_problems.Count} build problem(s) detected.");
+        }
+    }
+
+    private async void ProblemsList_DoubleTapped(
+        object? sender,
+        TappedEventArgs e)
+    {
+        if (_problemsList.SelectedItem
+            is not BuildProblem problem)
+        {
+            return;
+        }
+
+        var path =
+            problem.FilePath;
+
+        if (!Path.IsPathRooted(path))
+        {
+            path =
+                Path.Combine(
+                    _root,
+                    path);
+        }
+
+        if (!File.Exists(path))
+            return;
+
+        await OpenFileAsync(path);
+
+        if (problem.Line > 0)
+        {
+            JumpToLine(
+                problem.Line,
+                problem.Column);
+        }
+    }
+
+    private void JumpToLine(
+        int line,
+        int column)
+    {
+        var text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        var currentLine = 1;
+        var index = 0;
+
+        while (
+            currentLine < line &&
+            index < text.Length)
+        {
+            if (text[index] == '\n')
+                currentLine++;
+
+            index++;
+        }
+
+        if (column > 1)
+            index += column - 1;
+
+        index =
+            Math.Clamp(
+                index,
+                0,
+                text.Length);
+
+        _editorBox.CaretIndex =
+            index;
+
+        _editorBox.SelectionStart =
+            index;
+
+        _editorBox.SelectionEnd =
+            index;
+
+        _editorBox.Focus();
+    }
+
+    private async void TerminalInput_KeyDown(
+        object? sender,
+        KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+            return;
+
+        e.Handled = true;
+
+        var command =
+            _terminalInput.Text?.Trim();
+
+        if (string.IsNullOrWhiteSpace(command))
+            return;
+
+        _terminalInput.Text =
+            string.Empty;
+
+        AppendTerminal(
+            $"> {command}");
+
+        if (command.Equals(
+                "clear",
+                StringComparison.OrdinalIgnoreCase) ||
+            command.Equals(
+                "cls",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            _terminalOutput.Text =
+                string.Empty;
+
+            return;
+        }
+
+        ProcessResult result;
+
+        if (OperatingSystem.IsWindows())
+        {
+            result =
+                await _process.RunAsync(
+                    "cmd.exe",
+                    $"/c {command}",
+                    _root);
+        }
+        else
+        {
+            result =
+                await _process.RunAsync(
+                    "/bin/sh",
+                    $"-c \"{EscapeShellCommand(command)}\"",
+                    _root);
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                result.Output))
+        {
+            AppendTerminal(
+                result.Output.TrimEnd());
+        }
+
+        if (result.ExitCode != 0)
+        {
+            AppendTerminal(
+                $"Exit code: {result.ExitCode}");
+        }
+    }
+
+    private void AppendTerminal(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        if (string.IsNullOrWhiteSpace(
+                _terminalOutput.Text))
+        {
+            _terminalOutput.Text =
+                text;
+        }
+        else
+        {
+            _terminalOutput.Text +=
+                Environment.NewLine +
+                text;
+        }
+
+        _terminalOutput.CaretIndex =
+            _terminalOutput.Text?.Length
+            ?? 0;
+    }
+
+    private static string EscapeShellCommand(
+        string command)
+    {
+        return command
+            .Replace(
+                "\\",
+                "\\\\")
+            .Replace(
+                "\"",
+                "\\\"");
+    }
+
+    private async Task<string?> AskForNameAsync(
+        string title,
+        string label,
+        string initialValue)
+    {
+        var owner =
+            TopLevel.GetTopLevel(this)
+            as Window;
+
+        if (owner is null)
+            return null;
+
+        var input =
+            new TextBox
+            {
+                Text = initialValue,
+                MinWidth = 320
+            };
+
+        var dialog =
+            new Window
+            {
+                Title = title,
+                Width = 400,
+                Height = 180,
+                CanResize = false,
+
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner
+            };
+
+        var ok =
+            new Button
+            {
+                Content = "OK",
+                MinWidth = 75
+            };
+
+        var cancel =
+            new Button
+            {
+                Content = "Cancel",
+                MinWidth = 75
+            };
+
+        ok.Click +=
+            (_, _) =>
+            {
+                dialog.Close(
+                    input.Text?.Trim());
+            };
+
+        cancel.Click +=
+            (_, _) =>
+            {
+                dialog.Close(null);
+            };
+
+        dialog.Content =
+            new StackPanel
+            {
+                Margin =
+                    new Thickness(18),
+
+                Spacing = 10,
+
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = label
+                    },
+
+                    input,
+
+                    new StackPanel
+                    {
+                        Orientation =
+                            Orientation.Horizontal,
+
+                        HorizontalAlignment =
+                            HorizontalAlignment.Right,
+
+                        Spacing = 8,
+
+                        Children =
+                        {
+                            cancel,
+                            ok
+                        }
+                    }
+                }
+            };
+
+        return await dialog
+            .ShowDialog<string?>(
+                owner);
+    }
+
+    private async Task<bool> ConfirmAsync(
+        string message)
+    {
+        var owner =
+            TopLevel.GetTopLevel(this)
+            as Window;
+
+        if (owner is null)
+            return false;
+
+        var dialog =
+            new Window
+            {
+                Title = "Axiom",
+                Width = 380,
+                Height = 160,
+                CanResize = false,
+
+                WindowStartupLocation =
+                    WindowStartupLocation.CenterOwner
+            };
+
+        var delete =
+            new Button
+            {
+                Content = "Delete",
+                MinWidth = 80
+            };
+
+        var cancel =
+            new Button
+            {
+                Content = "Cancel",
+                MinWidth = 80
+            };
+
+        delete.Click +=
+            (_, _) =>
+            {
+                dialog.Close(true);
+            };
+
+        cancel.Click +=
+            (_, _) =>
+            {
+                dialog.Close(false);
+            };
+
+        dialog.Content =
+            new StackPanel
+            {
+                Margin =
+                    new Thickness(18),
+
+                Spacing = 14,
+
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = message,
+
+                        TextWrapping =
+                            Avalonia.Media.TextWrapping.Wrap
+                    },
+
+                    new StackPanel
+                    {
+                        Orientation =
+                            Orientation.Horizontal,
+
+                        HorizontalAlignment =
+                            HorizontalAlignment.Right,
+
+                        Spacing = 8,
+
+                        Children =
+                        {
+                            cancel,
+                            delete
+                        }
+                    }
+                }
+            };
+
+        return await dialog
+            .ShowDialog<bool>(
+                owner);
+    }
+
+    private static bool PathsEqual(
+        string first,
+        string second)
+    {
+        var comparison =
+            OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+        return string.Equals(
+            Path.GetFullPath(first)
+                .TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar),
+
+            Path.GetFullPath(second)
+                .TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar),
+
+            comparison);
+    }
+
+    private static bool IsInsideDirectory(
+        string file,
+        string directory)
+    {
+        var comparison =
+            OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+        var filePath =
+            Path.GetFullPath(file);
+
+        var directoryPath =
+            Path.GetFullPath(directory)
+                .TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+
+        return filePath.StartsWith(
+            directoryPath,
+            comparison);
+    }
+}

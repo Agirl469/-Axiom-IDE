@@ -18,23 +18,18 @@ public sealed class ProcessService
         {
             FileName = fileName,
             Arguments = arguments,
-
             WorkingDirectory =
-                workingDirectory
-                ?? Environment.CurrentDirectory,
+                workingDirectory ?? Environment.CurrentDirectory,
 
             UseShellExecute = false,
-
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-
             CreateNoWindow = true
         };
 
         using var process = new Process
         {
             StartInfo = startInfo,
-
             EnableRaisingEvents = true
         };
 
@@ -64,20 +59,24 @@ public sealed class ProcessService
             outputReceived?.Invoke(e.Data);
         };
 
-        if (!process.Start())
-        {
-            return new ProcessResult(
-                -1,
-                "Process could not be started.");
-        }
-
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
         try
         {
+            if (!process.Start())
+            {
+                return new ProcessResult(
+                    -1,
+                    "Process could not be started.");
+            }
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
             await process.WaitForExitAsync(
                 cancellationToken);
+
+            return new ProcessResult(
+                process.ExitCode,
+                output.ToString());
         }
         catch (OperationCanceledException)
         {
@@ -90,15 +89,20 @@ public sealed class ProcessService
             {
             }
 
-            throw;
+            return new ProcessResult(
+                -1,
+                "Process stopped.");
         }
-
-        return new ProcessResult(
-            process.ExitCode,
-            output.ToString());
+        catch (Exception ex)
+        {
+            return new ProcessResult(
+                -1,
+                ex.Message);
+        }
     }
 
-    public bool TryStartTerminal(string command)
+    public bool TryStartTerminal(
+        string workingDirectory)
     {
         try
         {
@@ -107,8 +111,8 @@ public sealed class ProcessService
                 Process.Start(
                     new ProcessStartInfo
                     {
-                        FileName = "cmd.exe",
-                        Arguments = $"/k {command}",
+                        FileName = "powershell.exe",
+                        WorkingDirectory = workingDirectory,
                         UseShellExecute = true
                     });
 
@@ -117,10 +121,11 @@ public sealed class ProcessService
 
             var terminals = new[]
             {
-                "x-terminal-emulator",
                 "kitty",
                 "konsole",
-                "gnome-terminal"
+                "gnome-terminal",
+                "xfce4-terminal",
+                "x-terminal-emulator"
             };
 
             foreach (var terminal in terminals)
@@ -131,9 +136,7 @@ public sealed class ProcessService
                         new ProcessStartInfo
                         {
                             FileName = terminal,
-                            Arguments =
-                                $"-e sh -c \"{command}; exec $SHELL\"",
-
+                            WorkingDirectory = workingDirectory,
                             UseShellExecute = false
                         });
 

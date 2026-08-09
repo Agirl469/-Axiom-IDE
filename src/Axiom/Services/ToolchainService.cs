@@ -36,7 +36,7 @@ public sealed class ToolchainService
                 ["dnf"] = "gcc gcc-c++",
                 ["pacman"] = "base-devel gcc"
             },
-            WingetId = "Brechtsanders.WinLibs.POSIX.UCRT"
+            WingetId = "BrechtSanders.WinLibs.POSIX.UCRT"
         },
         new()
         {
@@ -143,12 +143,15 @@ public sealed class ToolchainService
         {
             var arguments = string.Join(' ', toolchain.ProbeCommands);
             var result = await _process.RunAsync(toolchain.Command, arguments);
-
-            if (result.ExitCode == 0 || !string.IsNullOrWhiteSpace(result.Output))
+            if (result.ExitCode == 0)
             {
                 var version = result.Output
-                    .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                    .FirstOrDefault()?.Trim() ?? "Installed";
+                    .Split(
+                        '\n',
+                        StringSplitOptions.RemoveEmptyEntries)
+                    .FirstOrDefault()?
+                    .Trim()
+                    ?? "Installed";
 
                 return new ToolchainStatus
                 {

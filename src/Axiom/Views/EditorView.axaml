@@ -132,29 +132,121 @@ BorderBrush="{DynamicResource AxiomBorder}"
 	  </Grid>
 
 	  <Border
-	  Grid.Row="2"
-	  Grid.ColumnSpan="2"
-	  BorderBrush="{DynamicResource AxiomBorder}"
-	  BorderThickness="0,1,0,0"
-	  Background="{DynamicResource AxiomBackground}">
-      <Grid RowDefinitions="Auto,*">
-        <StackPanel Orientation="Horizontal" Spacing="18" Margin="12,7">
-          <TextBlock Text="Output" FontWeight="SemiBold" />
-          <TextBlock Text="Problems" Classes="muted" />
-          <TextBlock Text="Terminal" Classes="muted" />
-        </StackPanel>
-        <TextBox x:Name="OutputBox"
-                 Grid.Row="1"
-                 IsReadOnly="True"
-                 AcceptsReturn="True"
-                 TextWrapping="NoWrap"
-                 FontFamily="Cascadia Mono, JetBrains Mono, DejaVu Sans Mono, monospace"
-                 FontSize="12"
-                 BorderThickness="0"
-                 Padding="12"
-                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
-      </Grid>
-    </Border>
+    Grid.Row="2"
+    Grid.ColumnSpan="2"
+    BorderBrush="{DynamicResource AxiomBorder}"
+    BorderThickness="0,1,0,0"
+    Background="{DynamicResource AxiomBackground}">
+
+		  <Grid RowDefinitions="Auto,*">
+
+			  <StackPanel
+				  Grid.Row="0"
+				  Orientation="Horizontal"
+				  Spacing="4"
+				  Margin="8,5">
+
+				  <Button
+					  x:Name="OutputTabButton"
+					  Content="Output"
+					  Click="OutputTab_Click" />
+
+				  <Button
+					  x:Name="ProblemsTabButton"
+					  Content="Problems"
+					  Click="ProblemsTab_Click" />
+
+				  <Button
+					  x:Name="TerminalTabButton"
+					  Content="Terminal"
+					  Click="TerminalTab_Click" />
+
+			  </StackPanel>
+
+			  <TextBox
+				  x:Name="OutputBox"
+				  Grid.Row="1"
+				  IsReadOnly="True"
+				  AcceptsReturn="True"
+				  TextWrapping="NoWrap"
+				  FontFamily="{DynamicResource AxiomEditorFont}"
+				  FontSize="{DynamicResource AxiomEditorFontSize}"
+				  BorderThickness="0"
+				  Padding="12"
+				  Background="{DynamicResource EditorBackground}"
+				  Foreground="{DynamicResource EditorForeground}"
+				  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+				  ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+			  <ListBox
+	 x:Name="ProblemsList"
+	 Grid.Row="1"
+	 IsVisible="False"
+	 DoubleTapped="ProblemsList_DoubleTapped">
+
+				  <ListBox.ItemTemplate>
+					  <DataTemplate x:CompileBindings="False">
+
+						  <Grid
+							  ColumnDefinitions="80,180,70,*"
+							  Margin="8,5">
+
+							  <TextBlock
+								  Grid.Column="0"
+								  Text="{Binding Severity}" />
+
+							  <TextBlock
+								  Grid.Column="1"
+								  Text="{Binding DisplayFile}" />
+
+							  <TextBlock
+								  Grid.Column="2"
+								  Text="{Binding DisplayLocation}" />
+
+							  <TextBlock
+								  Grid.Column="3"
+								  Text="{Binding Message}"
+								  TextWrapping="Wrap" />
+
+						  </Grid>
+
+					  </DataTemplate>
+				  </ListBox.ItemTemplate>
+
+			  </ListBox>
+			  <Grid
+				  x:Name="TerminalPanel"
+				  Grid.Row="1"
+				  IsVisible="False"
+				  RowDefinitions="*,Auto">
+
+				  <TextBox
+					  x:Name="TerminalOutput"
+					  Grid.Row="0"
+					  IsReadOnly="True"
+					  AcceptsReturn="True"
+					  TextWrapping="NoWrap"
+					  FontFamily="{DynamicResource AxiomEditorFont}"
+					  FontSize="{DynamicResource AxiomEditorFontSize}"
+					  BorderThickness="0"
+					  Padding="10"
+					  Background="{DynamicResource EditorBackground}"
+					  Foreground="{DynamicResource EditorForeground}"
+					  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+					  ScrollViewer.VerticalScrollBarVisibility="Auto" />
+
+				  <TextBox
+					  x:Name="TerminalInput"
+					  Grid.Row="1"
+					  Watermark="Enter command..."
+					  FontFamily="{DynamicResource AxiomEditorFont}"
+					  FontSize="{DynamicResource AxiomEditorFontSize}"
+					  KeyDown="TerminalInput_KeyDown" />
+
+			  </Grid>
+
+		  </Grid>
+
+	  </Border>
   </Grid>
 </UserControl>
