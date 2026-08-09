@@ -1,0 +1,52 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.Views.KeybindsView"
+    Focusable="True"
+    KeyDown="View_KeyDown">
+
+    <Grid
+        RowDefinitions="Auto,Auto,*,Auto"
+        Margin="24">
+
+        <TextBlock
+            Text="Keybinds"
+            FontSize="24"
+            FontWeight="SemiBold" />
+
+        <Grid
+            Grid.Row="1"
+            ColumnDefinitions="*,Auto"
+            Margin="0,10,0,18">
+
+            <TextBlock
+                Text="Click a shortcut, then press the new key combination."
+                Classes="muted"
+                VerticalAlignment="Center" />
+
+            <Button
+                Grid.Column="1"
+                Content="Reset Defaults"
+                Click="Reset_Click" />
+
+        </Grid>
+
+        <ScrollViewer
+            Grid.Row="2"
+            VerticalScrollBarVisibility="Auto">
+
+            <StackPanel
+                x:Name="BindingList"
+                Spacing="6" />
+
+        </ScrollViewer>
+
+        <TextBlock
+            x:Name="StatusText"
+            Grid.Row="3"
+            Margin="0,14,0,0"
+            Classes="muted" />
+
+    </Grid>
+
+</UserControl>

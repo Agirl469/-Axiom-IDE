@@ -1,40 +1,40 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using Axiom.Build;
+using Axiom.Editor;
+using Axiom.Models;
+using Axiom.Search;
+using Axiom.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
-using Avalonia.Layout;
-using Avalonia.Markup.Xaml;
-using Avalonia.Threading;
-
-using Axiom.Build;
-using Axiom.Editor;
-using Axiom.Models;
-using Axiom.Services;
-
 namespace Axiom.Views;
 
 public partial class EditorView : UserControl
 {
     private readonly ProjectService _projects = new();
     private readonly ProcessService _process = new();
-    private readonly KeybindService _keybinds = new();
     private readonly string _root;
-
+    private readonly KeybindService _keybinds =
+    KeybindService.Current;
     private AxiomProject? _project;
     private EditorTab? _activeTab;
-
+    private readonly EditorSessionService _session;
     private readonly TreeView _projectTree;
     private readonly TextBlock _projectKindText;
     private readonly StackPanel _tabBar;
     private readonly TextBox _editorBox;
-
+    private CancellationTokenSource? _sessionSaveDelay;
+    private bool _restoringSession;
     private readonly TextBox _outputBox;
     private readonly ListBox _problemsList;
 
@@ -51,7 +51,8 @@ public partial class EditorView : UserControl
     public EditorView(string root)
     {
         _root = root;
-
+        _session =
+    new EditorSessionService(root);
         AvaloniaXamlLoader.Load(this);
 
         _projectTree =
@@ -94,14 +95,190 @@ public partial class EditorView : UserControl
             ?? throw new InvalidOperationException(
                 "TerminalOutput was not found.");
 
+        _findBar =
+    this.FindControl<Border>("FindBar")
+    ?? throw new InvalidOperationException(
+        "FindBar was not found.");
+
+        _findBox =
+            this.FindControl<TextBox>("FindBox")
+            ?? throw new InvalidOperationException(
+                "FindBox was not found.");
+
+        _findCountText =
+            this.FindControl<TextBlock>("FindCountText")
+            ?? throw new InvalidOperationException(
+                "FindCountText was not found.");
+
+        _projectSearchPanel =
+            this.FindControl<Grid>("ProjectSearchPanel")
+            ?? throw new InvalidOperationException(
+                "ProjectSearchPanel was not found.");
+
+        _projectSearchBox =
+            this.FindControl<TextBox>("ProjectSearchBox")
+            ?? throw new InvalidOperationException(
+                "ProjectSearchBox was not found.");
+
+        _projectSearchResults =
+            this.FindControl<ListBox>("ProjectSearchResults")
+            ?? throw new InvalidOperationException(
+                "ProjectSearchResults was not found.");
+
         _terminalInput =
             this.FindControl<TextBox>("TerminalInput")
             ?? throw new InvalidOperationException(
                 "TerminalInput was not found.");
 
+
+        _findCaseButton =
+    this.FindControl<ToggleButton>("FindCaseButton")
+    ?? throw new InvalidOperationException(
+        "FindCaseButton was not found in EditorView.axaml.");
+
+        _findWordButton =
+            this.FindControl<ToggleButton>("FindWordButton")
+            ?? throw new InvalidOperationException(
+                "FindWordButton was not found in EditorView.axaml.");
+
         ShowBottomPanel("output");
 
         _ = LoadProjectAsync();
+    }
+    private void ScheduleSessionSave()
+    {
+        if (_restoringSession)
+            return;
+
+        _sessionSaveDelay?.Cancel();
+        _sessionSaveDelay?.Dispose();
+
+        _sessionSaveDelay =
+            new CancellationTokenSource();
+
+        var token =
+            _sessionSaveDelay.Token;
+
+        _ = SaveSessionAfterDelayAsync(token);
+    }
+
+    private async Task SaveSessionAfterDelayAsync(
+        CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(
+                350,
+                token);
+
+            await SaveSessionAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task SaveSessionAsync()
+    {
+        StoreActiveTab();
+
+        var session =
+            new EditorSession();
+
+        foreach (var tab in _tabs)
+        {
+            if (!File.Exists(tab.FilePath))
+                continue;
+
+            session.Tabs.Add(
+                new EditorSessionTab
+                {
+                    File =
+                        _session.ToStoredPath(
+                            tab.FilePath),
+
+                    CaretIndex =
+                        tab.CaretIndex
+                });
+        }
+
+        if (_activeTab is not null)
+        {
+            session.ActiveFile =
+                _session.ToStoredPath(
+                    _activeTab.FilePath);
+        }
+
+        await _session.SaveAsync(
+            session);
+    }
+
+    private async Task<bool> RestoreSessionAsync()
+    {
+        var session =
+            await _session.LoadAsync();
+
+        if (session is null ||
+            session.Tabs.Count == 0)
+        {
+            return false;
+        }
+
+        _restoringSession = true;
+
+        try
+        {
+            foreach (var savedTab in session.Tabs)
+            {
+                var path =
+                    _session.ToFullPath(
+                        savedTab.File);
+
+                if (!File.Exists(path))
+                    continue;
+
+                await OpenFileAsync(path);
+
+                var tab =
+                    _tabs.FirstOrDefault(
+                        item =>
+                            PathsEqual(
+                                item.FilePath,
+                                path));
+
+                if (tab is not null)
+                {
+                    tab.CaretIndex =
+                        savedTab.CaretIndex;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                    session.ActiveFile))
+            {
+                var activePath =
+                    _session.ToFullPath(
+                        session.ActiveFile);
+
+                var activeTab =
+                    _tabs.FirstOrDefault(
+                        tab =>
+                            PathsEqual(
+                                tab.FilePath,
+                                activePath));
+
+                if (activeTab is not null)
+                {
+                    ActivateTab(activeTab);
+                }
+            }
+
+            return _tabs.Count > 0;
+        }
+        finally
+        {
+            _restoringSession = false;
+        }
     }
 
     public void Undo()
@@ -113,7 +290,24 @@ public partial class EditorView : UserControl
     {
         _editorBox.Redo();
     }
+    private readonly ProjectSearchService _search =
+    new();
 
+    private readonly Border _findBar;
+    private readonly TextBox _findBox;
+    private readonly TextBlock _findCountText;
+    private readonly ToggleButton _findCaseButton;
+    private readonly ToggleButton _findWordButton;
+    private readonly Grid _projectSearchPanel;
+    private readonly TextBox _projectSearchBox;
+    private readonly ListBox _projectSearchResults;
+
+    private readonly List<int> _fileMatches =
+        new();
+
+    private int _currentMatch = -1;
+
+    private CancellationTokenSource? _searchCancellation;
     private async Task LoadProjectAsync()
     {
         try
@@ -141,9 +335,13 @@ public partial class EditorView : UserControl
                       "No .axn project file found; this folder is in loose-file mode."
                     : $"Opened {_root}{Environment.NewLine}" +
                       $"{files.Count} files found.";
+            var restored =
+                await RestoreSessionAsync();
 
-            if (_project is not null &&
-                !string.IsNullOrWhiteSpace(_project.Entry))
+            if (!restored &&
+                _project is not null &&
+                !string.IsNullOrWhiteSpace(
+                    _project.Entry))
             {
                 var entry =
                     Path.Combine(
@@ -151,7 +349,9 @@ public partial class EditorView : UserControl
                         _project.Entry);
 
                 if (File.Exists(entry))
+                {
                     await OpenFileAsync(entry);
+                }
             }
         }
         catch (Exception ex)
@@ -183,7 +383,8 @@ public partial class EditorView : UserControl
         _terminalInput.Focus();
     }
 
-    private void ShowBottomPanel(string panel)
+    private void ShowBottomPanel(
+    string panel)
     {
         _outputBox.IsVisible =
             panel == "output";
@@ -193,8 +394,385 @@ public partial class EditorView : UserControl
 
         _terminalPanel.IsVisible =
             panel == "terminal";
+
+        _projectSearchPanel.IsVisible =
+            panel == "search";
+    }
+    private void SearchTab_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        OpenProjectSearch();
     }
 
+    private void OpenFind()
+    {
+        if (_activeTab is null)
+            return;
+
+        _findBar.IsVisible = true;
+
+        if (_editorBox.SelectionStart !=
+            _editorBox.SelectionEnd)
+        {
+            var text =
+                _editorBox.Text
+                ?? string.Empty;
+
+            var start =
+                Math.Min(
+                    _editorBox.SelectionStart,
+                    _editorBox.SelectionEnd);
+
+            var end =
+                Math.Max(
+                    _editorBox.SelectionStart,
+                    _editorBox.SelectionEnd);
+
+            _findBox.Text =
+                text[start..end];
+        }
+
+        _findBox.Focus();
+        _findBox.SelectAll();
+
+        RefreshFileMatches();
+    }
+
+    private void CloseFind()
+    {
+        _findBar.IsVisible = false;
+
+        _editorBox.Focus();
+    }
+
+    private void RefreshFileMatches()
+    {
+        _fileMatches.Clear();
+        _currentMatch = -1;
+
+        var query =
+            _findBox.Text;
+
+        var text =
+            _editorBox.Text
+            ?? string.Empty;
+
+        if (string.IsNullOrEmpty(query))
+        {
+            _findCountText.Text =
+                "0 results";
+
+            return;
+        }
+
+        var matchCase =
+    _findCaseButton?.IsChecked == true;
+
+        var wholeWord =
+            _findWordButton?.IsChecked == true;
+
+        var comparison =
+            matchCase
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase;
+        var start = 0;
+
+        while (start < text.Length)
+        {
+            var index =
+                text.IndexOf(
+                    query,
+                    start,
+                    comparison);
+
+            if (index < 0)
+                break;
+
+            if (!wholeWord ||
+                IsWholeWord(
+                    text,
+                    index,
+                    query.Length))
+            {
+                _fileMatches.Add(index);
+            }
+
+            start =
+                index +
+                Math.Max(
+                    query.Length,
+                    1);
+        }
+
+        if (_fileMatches.Count == 0)
+        {
+            _findCountText.Text =
+                "No results";
+
+            return;
+        }
+
+        SelectMatch(0);
+    }
+
+    private static bool IsWholeWord(
+    string text,
+    int start,
+    int length)
+    {
+        var before =
+            start - 1;
+
+        var after =
+            start + length;
+
+        var validBefore =
+            before < 0 ||
+            !IsWordCharacter(
+                text[before]);
+
+        var validAfter =
+            after >= text.Length ||
+            !IsWordCharacter(
+                text[after]);
+
+        return validBefore &&
+               validAfter;
+    }
+
+    private static bool IsWordCharacter(char value)
+    {
+        return char.IsLetterOrDigit(value) ||
+               value == '_';
+    }
+
+    private void FindOption_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        RefreshFileMatches();
+    }
+
+    private void SelectMatch(int index)
+    {
+        if (_fileMatches.Count == 0)
+            return;
+
+        index =
+            (index % _fileMatches.Count +
+             _fileMatches.Count)
+            % _fileMatches.Count;
+
+        _currentMatch =
+            index;
+
+        var start =
+            _fileMatches[index];
+
+        var length =
+            _findBox.Text?.Length
+            ?? 0;
+
+        _editorBox.SelectionStart =
+            start;
+
+        _editorBox.SelectionEnd =
+            start + length;
+
+        _editorBox.CaretIndex =
+            start + length;
+
+        _findCountText.Text =
+            $"{index + 1} / {_fileMatches.Count}";
+
+        _editorBox.Focus();
+    }
+
+    private void FindNext()
+    {
+        if (_fileMatches.Count == 0)
+            return;
+
+        SelectMatch(
+            _currentMatch + 1);
+    }
+
+    private void FindPrevious()
+    {
+        if (_fileMatches.Count == 0)
+            return;
+
+        SelectMatch(
+            _currentMatch - 1);
+    }
+
+    private void FindBox_TextChanged(
+    object? sender,
+    TextChangedEventArgs e)
+    {
+        RefreshFileMatches();
+    }
+
+    private void FindNext_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        FindNext();
+    }
+
+    private void FindPrevious_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        FindPrevious();
+    }
+
+    private void FindBox_KeyDown(
+        object? sender,
+        KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            CloseFind();
+            return;
+        }
+
+        if (e.Key != Key.Enter)
+            return;
+
+        e.Handled = true;
+
+        if (e.KeyModifiers.HasFlag(
+                KeyModifiers.Shift))
+        {
+            FindPrevious();
+        }
+        else
+        {
+            FindNext();
+        }
+    }
+
+    private async void ProjectSearch_Click(
+    object? sender,
+    RoutedEventArgs e)
+    {
+        await SearchProjectAsync();
+    }
+
+    private async void ProjectSearchBox_KeyDown(
+        object? sender,
+        KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+
+            ShowBottomPanel("output");
+
+            return;
+        }
+
+        if (e.Key != Key.Enter)
+            return;
+
+        e.Handled = true;
+
+        await SearchProjectAsync();
+    }
+
+    private async void ProjectSearchResults_DoubleTapped(
+    object? sender,
+    TappedEventArgs e)
+    {
+        if (_projectSearchResults.SelectedItem
+            is not SearchResult result)
+        {
+            return;
+        }
+
+        if (!File.Exists(
+                result.FilePath))
+        {
+            return;
+        }
+
+        await OpenFileAsync(
+            result.FilePath);
+
+        JumpToLine(
+            result.Line,
+            result.Column);
+
+        var length =
+            _projectSearchBox.Text?.Length
+            ?? 0;
+
+        if (length > 0)
+        {
+            var start =
+                _editorBox.CaretIndex;
+
+            _editorBox.SelectionStart =
+                start;
+
+            _editorBox.SelectionEnd =
+                Math.Min(
+                    start + length,
+                    _editorBox.Text?.Length ?? 0);
+        }
+    }
+
+    private void OpenProjectSearch()
+    {
+        ShowBottomPanel("search");
+
+        _projectSearchBox.Focus();
+        _projectSearchBox.SelectAll();
+    }
+
+    private async Task SearchProjectAsync()
+    {
+        var query =
+            _projectSearchBox.Text?.Trim();
+
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _projectSearchResults.ItemsSource =
+                null;
+
+            return;
+        }
+
+        _searchCancellation?.Cancel();
+        _searchCancellation?.Dispose();
+
+        _searchCancellation =
+            new CancellationTokenSource();
+
+        _projectSearchResults.ItemsSource =
+            new[]
+            {
+            "Searching..."
+            };
+
+        try
+        {
+            var results =
+                await _search.SearchAsync(
+                    _root,
+                    query,
+                    _searchCancellation.Token);
+
+            _projectSearchResults.ItemsSource =
+                results;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
     private void RefreshProjectTree()
     {
         var rootItem =
@@ -683,6 +1261,7 @@ public partial class EditorView : UserControl
         RefreshTabBar();
 
         _editorBox.Focus();
+        ScheduleSessionSave();
     }
 
     private void StoreActiveTab()
@@ -811,8 +1390,41 @@ public partial class EditorView : UserControl
         }
 
         RefreshTabBar();
+        ScheduleSessionSave();
     }
+    public async Task SaveAllAsync()
+    {
+        StoreActiveTab();
 
+        var dirtyTabs =
+            _tabs
+                .Where(tab => tab.IsDirty)
+                .ToList();
+
+        foreach (var tab in dirtyTabs)
+        {
+            await File.WriteAllTextAsync(
+                tab.FilePath,
+                tab.Text);
+
+            tab.IsDirty = false;
+        }
+
+        RefreshTabBar();
+
+        if (dirtyTabs.Count == 0)
+        {
+            _outputBox.Text =
+                "Nothing to save.";
+        }
+        else
+        {
+            _outputBox.Text =
+                dirtyTabs.Count == 1
+                    ? "Saved 1 file."
+                    : $"Saved {dirtyTabs.Count} files.";
+        }
+    }
     public async Task SaveCurrentFileAsync()
     {
         if (_activeTab is null)
@@ -854,6 +1466,7 @@ public partial class EditorView : UserControl
             _activeTab.IsDirty = true;
             RefreshTabBar();
         }
+        ScheduleSessionSave();
     }
 
 
@@ -868,8 +1481,10 @@ public partial class EditorView : UserControl
 
         _executionCancellation.Cancel();
 
-        AppendOutput("Stopping...");
+        AppendOutput(
+            "Stopping...");
     }
+
 
     private void Stop_Click(
         object? sender,
@@ -882,8 +1497,8 @@ public partial class EditorView : UserControl
     KeyEventArgs e)
     {
         if (_keybinds.Matches(
-            e,
-            _keybinds.Settings.Save))
+                e,
+                _keybinds.Settings.Save))
         {
             e.Handled = true;
 
@@ -893,8 +1508,32 @@ public partial class EditorView : UserControl
         }
 
         if (_keybinds.Matches(
-            e,
-            _keybinds.Settings.Build))
+                e,
+                _keybinds.Settings.SaveAll))
+        {
+            e.Handled = true;
+
+            await SaveAllAsync();
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+                e,
+                _keybinds.Settings.NewFile))
+        {
+            e.Handled = true;
+
+            NewFile_Click(
+                this,
+                new RoutedEventArgs());
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+                e,
+                _keybinds.Settings.Build))
         {
             e.Handled = true;
 
@@ -904,8 +1543,8 @@ public partial class EditorView : UserControl
         }
 
         if (_keybinds.Matches(
-            e,
-            _keybinds.Settings.Run))
+                e,
+                _keybinds.Settings.Run))
         {
             e.Handled = true;
 
@@ -915,8 +1554,8 @@ public partial class EditorView : UserControl
         }
 
         if (_keybinds.Matches(
-            e,
-            _keybinds.Settings.Stop))
+                e,
+                _keybinds.Settings.Stop))
         {
             e.Handled = true;
 
@@ -926,20 +1565,21 @@ public partial class EditorView : UserControl
         }
 
         if (_keybinds.Matches(
-            e,
-            _keybinds.Settings.Terminal))
+                e,
+                _keybinds.Settings.Terminal))
         {
             e.Handled = true;
 
             ShowBottomPanel("terminal");
+
             _terminalInput.Focus();
 
             return;
         }
 
         if (_keybinds.Matches(
-            e,
-            _keybinds.Settings.CloseTab))
+                e,
+                _keybinds.Settings.CloseTab))
         {
             e.Handled = true;
 
@@ -948,23 +1588,52 @@ public partial class EditorView : UserControl
 
             return;
         }
+        if (_keybinds.Matches(
+        e,
+        _keybinds.Settings.Find))
+        {
+            e.Handled = true;
 
+            OpenFind();
+
+            return;
+        }
+
+        if (_keybinds.Matches(
+                e,
+                _keybinds.Settings.FindProject))
+        {
+            e.Handled = true;
+
+            OpenProjectSearch();
+
+            return;
+        }
         if (_activeTab is null)
             return;
 
         if (e.Key == Key.Enter)
         {
             InsertIndentedNewLine();
+
             e.Handled = true;
             return;
         }
 
         if (e.Key == Key.Tab)
         {
-            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            if (e.KeyModifiers.HasFlag(
+                    KeyModifiers.Shift))
+            {
                 RemoveIndent();
+            }
             else
-                InsertText(new string(' ', IndentationService.TabSize));
+            {
+                InsertText(
+                    new string(
+                        ' ',
+                        IndentationService.TabSize));
+            }
 
             e.Handled = true;
         }
@@ -1543,6 +2212,7 @@ public partial class EditorView : UserControl
                 problem.Line,
                 problem.Column);
         }
+        ScheduleSessionSave();
     }
 
     private void JumpToLine(

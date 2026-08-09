@@ -6,6 +6,11 @@
 	<Application.Resources>
 
 		<SolidColorBrush
+    x:Key="SearchHighlight"
+    Color="#71557F" />
+		
+		
+		<SolidColorBrush
             x:Key="AxiomBackground"
             Color="#18181B" />
 

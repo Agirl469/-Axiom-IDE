@@ -5,137 +5,336 @@ namespace Axiom.Services;
 
 public sealed class KeybindService
 {
-    private readonly string _path;
+    public static KeybindService Current { get; } = new();
 
-    public KeybindSettings Settings { get; private set; } = new();
+    private readonly string _filePath;
 
-    public KeybindService()
+    public KeybindSettings Settings { get; private set; }
+
+    private KeybindService()
     {
-        var directory = Path.Combine(
+        var folder = Path.Combine(
             Environment.GetFolderPath(
                 Environment.SpecialFolder.ApplicationData),
             "Axiom");
 
-        Directory.CreateDirectory(directory);
+        Directory.CreateDirectory(folder);
 
-        _path = Path.Combine(directory, "keybinds.json");
+        _filePath = Path.Combine(
+            folder,
+            "keybinds.json");
 
-        Load();
+        Settings = Load();
     }
 
-    public void Load()
+    private KeybindSettings Load()
     {
-        if (!File.Exists(_path))
-        {
-            Settings = new KeybindSettings();
-            return;
-        }
+        if (!File.Exists(_filePath))
+            return new KeybindSettings();
 
         try
         {
-            var json = File.ReadAllText(_path);
+            var json =
+                File.ReadAllText(_filePath);
 
-            Settings =
-                JsonSerializer.Deserialize<KeybindSettings>(json)
+            return JsonSerializer.Deserialize<KeybindSettings>(json)
                 ?? new KeybindSettings();
         }
         catch
         {
-            Settings = new KeybindSettings();
+            return new KeybindSettings();
         }
     }
 
     public async Task SaveAsync()
     {
-        var json = JsonSerializer.Serialize(
-            Settings,
-            new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+        var json =
+            JsonSerializer.Serialize(
+                Settings,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
 
-        await File.WriteAllTextAsync(_path, json);
+        await File.WriteAllTextAsync(
+            _filePath,
+            json);
+    }
+
+    public async Task ResetAsync()
+    {
+        Settings =
+            new KeybindSettings();
+
+        await SaveAsync();
     }
 
     public bool Matches(
         KeyEventArgs e,
-        string binding)
+        Keybind bind)
     {
-        if (string.IsNullOrWhiteSpace(binding))
-            return false;
-
-        var parts = binding
-            .Split(
-                '+',
-                StringSplitOptions.RemoveEmptyEntries |
-                StringSplitOptions.TrimEntries);
-
-        var modifiers = KeyModifiers.None;
-        Key? key = null;
-
-        foreach (var part in parts)
-        {
-            switch (part.ToLowerInvariant())
-            {
-                case "ctrl":
-                case "control":
-                    modifiers |= KeyModifiers.Control;
-                    break;
-
-                case "shift":
-                    modifiers |= KeyModifiers.Shift;
-                    break;
-
-                case "alt":
-                    modifiers |= KeyModifiers.Alt;
-                    break;
-
-                case "cmd":
-                case "command":
-                case "meta":
-                    modifiers |= KeyModifiers.Meta;
-                    break;
-
-                default:
-                    if (Enum.TryParse<Key>(
-                        part,
-                        true,
-                        out var parsed))
-                    {
-                        key = parsed;
-                    }
-                    break;
-            }
-        }
-
-        return key is not null &&
-               e.Key == key &&
-               e.KeyModifiers == modifiers;
+        return e.Key == bind.Key &&
+               NormalizeModifiers(e.KeyModifiers) ==
+               NormalizeModifiers(bind.Modifiers);
     }
 
-    public void Reset()
+    public bool HasConflict(
+        string action,
+        Keybind bind)
     {
-        Settings = new KeybindSettings();
+        return GetBindings()
+            .Any(x =>
+                x.Action != action &&
+                x.Bind.Key == bind.Key &&
+                NormalizeModifiers(x.Bind.Modifiers) ==
+                NormalizeModifiers(bind.Modifiers));
+    }
+
+    public string? FindConflict(
+        string action,
+        Keybind bind)
+    {
+        return GetBindings()
+            .FirstOrDefault(x =>
+                x.Action != action &&
+                x.Bind.Key == bind.Key &&
+                NormalizeModifiers(x.Bind.Modifiers) ==
+                NormalizeModifiers(bind.Modifiers))
+            ?.Action;
+    }
+
+    public IReadOnlyList<KeybindEntry> GetBindings()
+    {
+        return
+        [
+            new("Find", Settings.Find),
+            new("Find in Project", Settings.FindProject),
+            new("Save", Settings.Save),
+            new("Save All", Settings.SaveAll),
+            new("New File", Settings.NewFile),
+            new("Build", Settings.Build),
+            new("Run", Settings.Run),
+            new("Stop", Settings.Stop),
+            new("Terminal", Settings.Terminal),
+            new("Close Tab", Settings.CloseTab)
+        ];
+    }
+
+    public Keybind GetBinding(
+        string action)
+    {
+        return action switch
+        {
+            "Save" => Settings.Save,
+            "Save All" => Settings.SaveAll,
+            "New File" => Settings.NewFile,
+            "Build" => Settings.Build,
+            "Run" => Settings.Run,
+            "Stop" => Settings.Stop,
+            "Terminal" => Settings.Terminal,
+            "Close Tab" => Settings.CloseTab,
+            "Find" => Settings.Find,
+            "Find in Project" => Settings.FindProject,
+            _ => throw new ArgumentException(
+                $"Unknown keybind: {action}")
+        };
+    }
+
+    public void SetBinding(
+        string action,
+        Keybind bind)
+    {
+        switch (action)
+        {
+
+            case "Find":
+                Settings.Find = bind;
+                break;
+
+            case "Find in Project":
+                Settings.FindProject = bind;
+                break;
+
+
+            case "Save":
+                Settings.Save = bind;
+                break;
+
+            case "Save All":
+                Settings.SaveAll = bind;
+                break;
+
+            case "New File":
+                Settings.NewFile = bind;
+                break;
+
+            case "Build":
+                Settings.Build = bind;
+                break;
+
+            case "Run":
+                Settings.Run = bind;
+                break;
+
+            case "Stop":
+                Settings.Stop = bind;
+                break;
+
+            case "Terminal":
+                Settings.Terminal = bind;
+                break;
+
+            case "Close Tab":
+                Settings.CloseTab = bind;
+                break;
+        }
+    }
+
+    public static string Format(
+        Keybind bind)
+    {
+        var parts =
+            new List<string>();
+
+        if (bind.Modifiers.HasFlag(
+                KeyModifiers.Control))
+        {
+            parts.Add("Ctrl");
+        }
+
+        if (bind.Modifiers.HasFlag(
+                KeyModifiers.Shift))
+        {
+            parts.Add("Shift");
+        }
+
+        if (bind.Modifiers.HasFlag(
+                KeyModifiers.Alt))
+        {
+            parts.Add("Alt");
+        }
+
+        if (bind.Modifiers.HasFlag(
+                KeyModifiers.Meta))
+        {
+            parts.Add("Meta");
+        }
+
+        parts.Add(
+            GetKeyName(bind.Key));
+
+        return string.Join(
+            " + ",
+            parts);
+    }
+
+    public static bool IsModifierKey(
+        Key key)
+    {
+        return key is
+            Key.LeftCtrl or
+            Key.RightCtrl or
+            Key.LeftShift or
+            Key.RightShift or
+            Key.LeftAlt or
+            Key.RightAlt or
+            Key.LWin or
+            Key.RWin;
+    }
+
+    private static string GetKeyName(
+        Key key)
+    {
+        return key switch
+        {
+            Key.OemTilde => "`",
+            Key.OemComma => ",",
+            Key.OemPeriod => ".",
+            Key.OemPlus => "+",
+            Key.OemMinus => "-",
+            _ => key.ToString()
+        };
+    }
+
+    private static KeyModifiers NormalizeModifiers(
+        KeyModifiers modifiers)
+    {
+        return modifiers &
+            (KeyModifiers.Control |
+             KeyModifiers.Shift |
+             KeyModifiers.Alt |
+             KeyModifiers.Meta);
     }
 }
 
 public sealed class KeybindSettings
 {
-    public string Save { get; set; } = "Ctrl+S";
-    public string SaveAll { get; set; } = "Ctrl+Shift+S";
 
-    public string NewFile { get; set; } = "Ctrl+N";
-    public string OpenFile { get; set; } = "Ctrl+O";
+    public Keybind Find { get; set; } =
+    new(
+        Key.F,
+        KeyModifiers.Control);
 
-    public string Find { get; set; } = "Ctrl+F";
-    public string FindProject { get; set; } = "Ctrl+Shift+F";
+    public Keybind FindProject { get; set; } =
+        new(
+            Key.F,
+            KeyModifiers.Control |
+            KeyModifiers.Shift);
 
-    public string Build { get; set; } = "Ctrl+Shift+B";
-    public string Run { get; set; } = "F5";
-    public string Stop { get; set; } = "Shift+F5";
+    public Keybind Save { get; set; } =
+        new(Key.S, KeyModifiers.Control);
 
-    public string Terminal { get; set; } = "Ctrl+OemTilde";
-    public string CloseTab { get; set; } = "Ctrl+W";
+    public Keybind SaveAll { get; set; } =
+        new(
+            Key.S,
+            KeyModifiers.Control |
+            KeyModifiers.Shift);
 
-    public string Settings { get; set; } = "Ctrl+OemComma";
+    public Keybind NewFile { get; set; } =
+        new(Key.N, KeyModifiers.Control);
+
+    public Keybind Build { get; set; } =
+        new(
+            Key.B,
+            KeyModifiers.Control |
+            KeyModifiers.Shift);
+
+    public Keybind Run { get; set; } =
+        new(Key.F5);
+
+    public Keybind Stop { get; set; } =
+        new(
+            Key.F5,
+            KeyModifiers.Shift);
+
+    public Keybind Terminal { get; set; } =
+        new(
+            Key.OemTilde,
+            KeyModifiers.Control);
+
+    public Keybind CloseTab { get; set; } =
+        new(Key.W, KeyModifiers.Control);
 }
+
+public sealed class Keybind
+{
+    public Keybind()
+    {
+    }
+
+    public Keybind(
+        Key key,
+        KeyModifiers modifiers = KeyModifiers.None)
+    {
+        Key = key;
+        Modifiers = modifiers;
+    }
+
+    public Key Key { get; set; }
+
+    public KeyModifiers Modifiers { get; set; }
+}
+
+public sealed record KeybindEntry(
+    string Action,
+    Keybind Bind);

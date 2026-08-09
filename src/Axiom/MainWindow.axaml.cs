@@ -34,12 +34,17 @@ public partial class MainWindow : Window
                 Title = "Open Axiom Project",
                 AllowMultiple = false,
                 FileTypeFilter =
-                [
-                    new FilePickerFileType("Axiom Project")
-                {
-                    Patterns = ["*.axn"]
-                }
-                ]
+[
+    new FilePickerFileType(
+        "Axiom and Visual Studio Projects")
+    {
+        Patterns =
+        [
+            "*.axn",
+            "*.sln"
+        ]
+    }
+]
             });
 
         if (files.Count == 0)
@@ -54,6 +59,30 @@ public partial class MainWindow : Window
 
         if (!string.IsNullOrWhiteSpace(root))
             OpenRoot(root);
+
+        if (Path.GetExtension(projectFile)
+    .Equals(
+        ".sln",
+        StringComparison.OrdinalIgnoreCase))
+        {
+            var importer =
+                new SlnImportWindow(
+                    projectFile);
+
+            var importedRoot =
+                await importer
+                    .ShowDialog<string?>(
+                        this);
+
+            if (!string.IsNullOrWhiteSpace(
+                    importedRoot))
+            {
+                OpenRoot(
+                    importedRoot);
+            }
+
+            return;
+        }
     }
     private void ThemeDark_Click(
     object? sender,
