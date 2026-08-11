@@ -1,0 +1,76 @@
+<Window
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.Views.PackagePreviewWindow"
+    Title="Import Package"
+    Width="520"
+    Height="430"
+    WindowStartupLocation="CenterOwner"
+    CanResize="False">
+
+    <Grid
+        Margin="22"
+        RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+        <TextBlock
+            x:Name="PackageNameText"
+            Text="Package"
+            FontSize="24"
+            FontWeight="SemiBold" />
+
+        <TextBlock
+            x:Name="AuthorText"
+            Grid.Row="1"
+            Margin="0,4,0,16"
+            Classes="muted" />
+
+        <Border
+            Grid.Row="2"
+            Classes="panel"
+            Padding="14">
+
+            <StackPanel Spacing="7">
+
+                <TextBlock
+                    x:Name="TypeText" />
+
+                <TextBlock
+                    x:Name="VersionText" />
+
+                <TextBlock
+                    x:Name="FileCountText" />
+
+                <TextBlock
+                    Text="No executable content allowed"
+                    FontWeight="SemiBold" />
+
+            </StackPanel>
+
+        </Border>
+
+        <ListBox
+            x:Name="ValidationList"
+            Grid.Row="3"
+            Margin="0,14,0,14" />
+
+        <StackPanel
+            Grid.Row="4"
+            Orientation="Horizontal"
+            HorizontalAlignment="Right"
+            Spacing="8">
+
+            <Button
+                Content="Cancel"
+                Click="Cancel_Click" />
+
+            <Button
+                x:Name="ImportButton"
+                Content="Import"
+                Classes="primary"
+                Click="Import_Click" />
+
+        </StackPanel>
+
+    </Grid>
+
+</Window>

@@ -70,7 +70,14 @@
 				<views:KeybindsView />
 
 			</Border>
+			<Border
+				Classes="panel"
+				Padding="14">
 
+				<views:EffectsSettingsView />
+
+			</Border>
+			
 			<Border
                 Classes="panel"
                 Padding="18">

@@ -1,0 +1,12 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.Views.EffectLayer"
+    IsHitTestVisible="False">
+
+    <Canvas
+        x:Name="ParticleCanvas"
+        ClipToBounds="True"
+        IsHitTestVisible="False" />
+
+</UserControl>

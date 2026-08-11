@@ -1,0 +1,265 @@
+<UserControl
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="Axiom.Views.EffectsSettingsView">
+
+    <StackPanel
+        Spacing="14"
+        Margin="4">
+
+        <Grid ColumnDefinitions="*,Auto">
+
+            <StackPanel Spacing="3">
+
+                <TextBlock
+                    Text="Visual Effects"
+                    FontSize="18"
+                    FontWeight="SemiBold" />
+
+                <TextBlock
+                    Text="Decorative effects rendered over the Axiom interface."
+                    Classes="muted"
+                    TextWrapping="Wrap" />
+
+            </StackPanel>
+
+
+
+			<StackPanel
+    Orientation="Horizontal"
+    HorizontalAlignment="Right"
+    Spacing="8">
+
+				<Button
+					Content="Import Effect"
+					Click="ImportEffect_Click" />
+
+				<Button
+					Content="Export Effect"
+					Click="ExportEffect_Click" />
+
+				<Button
+					Content="Reset"
+					Click="Reset_Click" />
+
+				<Button
+					Content="Preview"
+					Click="Preview_Click" />
+
+				<Button
+					Content="Save"
+					Classes="primary"
+					Click="Save_Click" />
+
+			</StackPanel>
+<ToggleSwitch
+    x:Name="EffectsEnabled"
+    Grid.Column="1"
+    OnContent="On"
+    OffContent="Off"
+    IsCheckedChanged="SettingChanged" />
+
+        </Grid>
+
+
+        <Border
+            Classes="panel"
+            Padding="14">
+
+            <StackPanel Spacing="12">
+
+                <Grid ColumnDefinitions="*,Auto">
+
+                    <StackPanel>
+
+                        <TextBlock
+                            Text="Falling Petals"
+                            FontWeight="SemiBold" />
+
+                        <TextBlock
+                            Text="Soft petals drift across the interface."
+                            Classes="muted"
+                            FontSize="12" />
+
+                    </StackPanel>
+
+                  <ToggleSwitch
+    x:Name="PetalsEnabled"
+    Grid.Column="1"
+    IsCheckedChanged="SettingChanged" />
+
+                </Grid>
+
+
+                <Grid
+                    ColumnDefinitions="130,*,60">
+
+                    <TextBlock
+                        Text="Density"
+                        VerticalAlignment="Center" />
+
+                    <Slider
+                        x:Name="DensitySlider"
+                        Grid.Column="1"
+                        Minimum="1"
+                        Maximum="20"
+                        TickFrequency="1"
+                        ValueChanged="SliderChanged" />
+
+                    <TextBlock
+                        x:Name="DensityText"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center" />
+
+                </Grid>
+
+
+                <Grid
+                    ColumnDefinitions="130,*,60">
+
+                    <TextBlock
+                        Text="Speed"
+                        VerticalAlignment="Center" />
+
+                    <Slider
+                        x:Name="SpeedSlider"
+                        Grid.Column="1"
+                        Minimum="0.2"
+                        Maximum="3"
+                        ValueChanged="SliderChanged" />
+
+                    <TextBlock
+                        x:Name="SpeedText"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center" />
+
+                </Grid>
+
+
+                <Grid
+                    ColumnDefinitions="130,*,60">
+
+                    <TextBlock
+                        Text="Opacity"
+                        VerticalAlignment="Center" />
+
+                    <Slider
+                        x:Name="OpacitySlider"
+                        Grid.Column="1"
+                        Minimum="0.1"
+                        Maximum="1"
+                        ValueChanged="SliderChanged" />
+
+                    <TextBlock
+                        x:Name="OpacityText"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center" />
+
+                </Grid>
+
+
+                <Grid
+                    ColumnDefinitions="130,*,60">
+
+                    <TextBlock
+                        Text="Size"
+                        VerticalAlignment="Center" />
+
+                    <Slider
+                        x:Name="SizeSlider"
+                        Grid.Column="1"
+                        Minimum="8"
+                        Maximum="40"
+                        ValueChanged="SliderChanged" />
+
+                    <TextBlock
+                        x:Name="SizeText"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center" />
+
+                </Grid>
+
+
+                <Grid
+                    ColumnDefinitions="130,*,60">
+
+                    <TextBlock
+                        Text="Wind"
+                        VerticalAlignment="Center" />
+
+                    <Slider
+                        x:Name="WindSlider"
+                        Grid.Column="1"
+                        Minimum="-2"
+                        Maximum="2"
+                        ValueChanged="SliderChanged" />
+
+                    <TextBlock
+                        x:Name="WindText"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center" />
+
+                </Grid>
+
+
+                <Grid
+                    ColumnDefinitions="130,*,60">
+
+                    <TextBlock
+                        Text="Particle limit"
+                        VerticalAlignment="Center" />
+
+                    <Slider
+                        x:Name="ParticleLimitSlider"
+                        Grid.Column="1"
+                        Minimum="10"
+                        Maximum="250"
+                        TickFrequency="10"
+                        ValueChanged="SliderChanged" />
+
+                    <TextBlock
+                        x:Name="ParticleLimitText"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center" />
+
+                </Grid>
+
+            </StackPanel>
+
+        </Border>
+
+
+        <StackPanel
+            Orientation="Horizontal"
+            HorizontalAlignment="Right"
+            Spacing="8">
+
+            <Button
+                Content="Reset"
+                Click="Reset_Click" />
+
+            <Button
+                Content="Preview"
+                Click="Preview_Click" />
+
+            <Button
+                Content="Save"
+                Classes="primary"
+                Click="Save_Click" />
+
+        </StackPanel>
+
+
+        <TextBlock
+            x:Name="StatusText"
+            Classes="muted" />
+
+    </StackPanel>
+
+</UserControl>
