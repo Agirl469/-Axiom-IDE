@@ -8,7 +8,9 @@ namespace Axiom.Effects;
 internal sealed class ParticleEngine
 {
     private readonly Canvas _canvas;
-    private readonly List<Particle> _particles = new();
+
+    private readonly List<Particle> _particles = [];
+
     private readonly Random _random = new();
 
     private readonly DispatcherTimer _timer;
@@ -21,25 +23,22 @@ internal sealed class ParticleEngine
     private EffectSettings Settings =>
         EffectService.Current.Settings;
 
-    public ParticleEngine(
-        Canvas canvas)
+    public ParticleEngine(Canvas canvas)
     {
         _canvas = canvas;
 
-        _timer =
-            new DispatcherTimer
-            {
-                Interval =
-                    TimeSpan.FromMilliseconds(16)
-            };
+        _timer = new DispatcherTimer
+        {
+            Interval =
+                TimeSpan.FromMilliseconds(16)
+        };
 
         _timer.Tick += Tick;
     }
 
     public void Start()
     {
-        _lastFrame =
-            DateTime.UtcNow;
+        _lastFrame = DateTime.UtcNow;
 
         _timer.Start();
     }
@@ -54,31 +53,30 @@ internal sealed class ParticleEngine
     public void Clear()
     {
         foreach (var particle in _particles)
-        {
-            _canvas.Children.Remove(
-                particle.Control);
-        }
+            _canvas.Children.Remove(particle.Control);
 
         _particles.Clear();
     }
 
     public void Burst(int amount)
     {
-        if (!Settings.Enabled ||
-            !Settings.PetalsEnabled)
-        {
+        if (!Settings.Enabled)
             return;
-        }
 
-        amount =
-            Math.Min(
-                amount,
-                Settings.MaxParticles);
-
-        for (var i = 0; i < amount; i++)
+        for (var i = 0;
+             i < amount &&
+             _particles.Count < Settings.MaxParticles;
+             i++)
         {
-            SpawnPetal(
-                randomY: true);
+            var kind =
+                GetRandomEnabledKind();
+
+            if (kind is null)
+                return;
+
+            Spawn(
+                kind.Value,
+                true);
         }
     }
 
@@ -90,29 +88,26 @@ internal sealed class ParticleEngine
             DateTime.UtcNow;
 
         var delta =
-            (now - _lastFrame)
-            .TotalSeconds;
-
-        _lastFrame = now;
-
-        delta =
             Math.Clamp(
-                delta,
+                (now - _lastFrame)
+                    .TotalSeconds,
                 0,
                 0.05);
 
-        if (!Settings.Enabled ||
-            !Settings.PetalsEnabled)
+        _lastFrame = now;
+
+        if (!Settings.Enabled)
         {
             Clear();
             return;
         }
 
-        Spawn(delta);
-        Update(delta);
+        SpawnParticles(delta);
+
+        UpdateParticles(delta);
     }
 
-    private void Spawn(
+    private void SpawnParticles(
         double delta)
     {
         if (_canvas.Bounds.Width <= 0 ||
@@ -121,11 +116,9 @@ internal sealed class ParticleEngine
             return;
         }
 
-        var spawnRate =
-            Settings.Density * 0.8;
-
         _spawnAccumulator +=
-            delta * spawnRate;
+            delta *
+            Settings.Density;
 
         while (_spawnAccumulator >= 1)
         {
@@ -137,12 +130,54 @@ internal sealed class ParticleEngine
                 break;
             }
 
-            SpawnPetal(
-                randomY: false);
+            var kind =
+                GetRandomEnabledKind();
+
+            if (kind is null)
+                break;
+
+            Spawn(
+                kind.Value,
+                false);
         }
     }
 
-    private void SpawnPetal(
+    private ParticleKind? GetRandomEnabledKind()
+    {
+        var kinds =
+            new List<ParticleKind>();
+
+        if (Settings.PetalsEnabled)
+            kinds.Add(ParticleKind.Petal);
+
+        if (Settings.LeavesEnabled)
+            kinds.Add(ParticleKind.Leaf);
+
+        if (Settings.SnowEnabled)
+            kinds.Add(ParticleKind.Snow);
+
+        if (Settings.RainEnabled)
+        {
+            kinds.Add(ParticleKind.Rain);
+            kinds.Add(ParticleKind.Rain);
+            kinds.Add(ParticleKind.Rain);
+        }
+
+        if (Settings.FirefliesEnabled)
+            kinds.Add(ParticleKind.Firefly);
+
+        if (Settings.StarsEnabled)
+            kinds.Add(ParticleKind.Star);
+
+        if (kinds.Count == 0)
+            return null;
+
+        return kinds[
+            _random.Next(kinds.Count)];
+    }
+
+    private void Spawn(
+        ParticleKind kind,
         bool randomY)
     {
         var width =
@@ -158,28 +193,29 @@ internal sealed class ParticleEngine
         var size =
             Settings.Size *
             RandomRange(
-                0.7,
-                1.3);
+                0.65,
+                1.35);
 
-        var petal =
+        var text =
             new TextBlock
             {
                 Text =
-                    RandomPetal(),
+                    GetGlyph(kind),
 
-                FontSize = size,
+                FontSize =
+                    size,
 
                 Opacity =
                     Math.Clamp(
                         Settings.Opacity *
                         RandomRange(
                             0.7,
-                            1.0),
+                            1),
                         0.05,
-                        1.0),
+                        1),
 
                 Foreground =
-                    CreatePetalBrush(),
+                    GetBrush(kind),
 
                 IsHitTestVisible =
                     false,
@@ -194,7 +230,7 @@ internal sealed class ParticleEngine
         var rotation =
             new RotateTransform();
 
-        petal.RenderTransform =
+        text.RenderTransform =
             rotation;
 
         var x =
@@ -211,24 +247,27 @@ internal sealed class ParticleEngine
                     -80,
                     -10);
 
+        var speed =
+            GetSpeed(kind) *
+            Settings.Speed;
+
         var particle =
             new Particle
             {
-                Control = petal,
+                Control = text,
+
+                Kind = kind,
 
                 X = x,
                 Y = y,
 
                 VelocityX =
                     RandomRange(
-                        -8,
-                        8),
+                        -6,
+                        6),
 
                 VelocityY =
-                    RandomRange(
-                        22,
-                        48) *
-                    Settings.Speed,
+                    speed,
 
                 Rotation =
                     RandomRange(
@@ -236,9 +275,11 @@ internal sealed class ParticleEngine
                         360),
 
                 RotationSpeed =
-                    RandomRange(
-                        -70,
-                        70),
+                    kind == ParticleKind.Rain
+                        ? 0
+                        : RandomRange(
+                            -60,
+                            60),
 
                 DriftPhase =
                     RandomRange(
@@ -247,12 +288,12 @@ internal sealed class ParticleEngine
 
                 DriftSpeed =
                     RandomRange(
-                        0.8,
-                        2.0),
+                        0.5,
+                        2),
 
                 Lifetime =
                     RandomRange(
-                        8,
+                        7,
                         18)
             };
 
@@ -260,21 +301,19 @@ internal sealed class ParticleEngine
             particle.Rotation;
 
         Canvas.SetLeft(
-            petal,
-            x);
+            text,
+            particle.X);
 
         Canvas.SetTop(
-            petal,
-            y);
+            text,
+            particle.Y);
 
-        _canvas.Children.Add(
-            petal);
+        _canvas.Children.Add(text);
 
-        _particles.Add(
-            particle);
+        _particles.Add(particle);
     }
 
-    private void Update(
+    private void UpdateParticles(
         double delta)
     {
         var width =
@@ -288,113 +327,224 @@ internal sealed class ParticleEngine
              i >= 0;
              i--)
         {
-            var particle =
+            var p =
                 _particles[i];
 
-            particle.Age += delta;
+            p.Age += delta;
 
-            particle.DriftPhase +=
+            p.DriftPhase +=
                 delta *
-                particle.DriftSpeed;
+                p.DriftSpeed;
 
             var drift =
                 Math.Sin(
-                    particle.DriftPhase) *
-                16;
+                    p.DriftPhase) *
+                GetDrift(p.Kind);
 
             var wind =
-                Settings.Wind * 30;
+                Settings.Wind * 28;
 
-            particle.X +=
+            p.X +=
                 (
-                    particle.VelocityX +
+                    p.VelocityX +
                     drift +
                     wind
                 ) * delta;
 
-            particle.Y +=
-                particle.VelocityY *
-                delta *
-                Settings.Speed;
+            p.Y +=
+                p.VelocityY *
+                delta;
 
-            particle.Rotation +=
-                particle.RotationSpeed *
+            p.Rotation +=
+                p.RotationSpeed *
                 delta;
 
             Canvas.SetLeft(
-                particle.Control,
-                particle.X);
+                p.Control,
+                p.X);
 
             Canvas.SetTop(
-                particle.Control,
-                particle.Y);
+                p.Control,
+                p.Y);
 
-            if (particle.Control.RenderTransform
+            if (p.Control.RenderTransform
                 is RotateTransform rotation)
             {
                 rotation.Angle =
-                    particle.Rotation;
+                    p.Rotation;
             }
 
-            var expired =
-                particle.Age >
-                particle.Lifetime;
-
-            var below =
-                particle.Y >
-                height + 60;
-
-            var tooFar =
-                particle.X <
-                    -120 ||
-                particle.X >
-                    width + 120;
-
-            if (!expired &&
-                !below &&
-                !tooFar)
+            if (p.Kind ==
+                ParticleKind.Firefly)
             {
-                continue;
+                p.Control.Opacity =
+                    Math.Clamp(
+                        0.35 +
+                        Math.Sin(
+                            p.DriftPhase * 2) *
+                        0.3,
+                        0.1,
+                        Settings.Opacity);
             }
+
+            var remove =
+                p.Age > p.Lifetime ||
+                p.Y > height + 80 ||
+                p.X < -120 ||
+                p.X > width + 120;
+
+            if (!remove)
+                continue;
 
             _canvas.Children.Remove(
-                particle.Control);
+                p.Control);
 
             _particles.RemoveAt(i);
         }
     }
 
-    private string RandomPetal()
+    private string GetGlyph(
+        ParticleKind kind)
     {
-        var values =
-            new[]
-            {
-                "❀",
-                "✿",
-                "❁",
-                "•"
-            };
+        return kind switch
+        {
+            ParticleKind.Petal =>
+                _random.Next(2) == 0
+                    ? "❀"
+                    : "✿",
 
-        return values[
-            _random.Next(
-                values.Length)];
+            ParticleKind.Leaf =>
+                _random.Next(2) == 0
+                    ? "❧"
+                    : "❦",
+
+            ParticleKind.Snow =>
+                "❄",
+
+            ParticleKind.Rain =>
+                "│",
+
+            ParticleKind.Firefly =>
+                "•",
+
+            ParticleKind.Star =>
+                _random.Next(2) == 0
+                    ? "✦"
+                    : "✧",
+
+            _ =>
+                "•"
+        };
     }
 
-    private IBrush CreatePetalBrush()
+    private IBrush GetBrush(
+        ParticleKind kind)
     {
-        var colors =
-            new[]
+        var color =
+            kind switch
             {
-                Color.Parse("#F7A8C4"),
-                Color.Parse("#E88DB3"),
-                Color.Parse("#FFD0DF"),
-                Color.Parse("#D77BA5")
+                ParticleKind.Petal =>
+                    Pick(
+                        "#F7A8C4",
+                        "#E88DB3",
+                        "#FFD0DF",
+                        "#D77BA5"),
+
+                ParticleKind.Leaf =>
+                    Pick(
+                        "#C68B59",
+                        "#DDA15E",
+                        "#BC6C25",
+                        "#8A9A5B"),
+
+                ParticleKind.Snow =>
+                    Pick(
+                        "#FFFFFF",
+                        "#DCEBFF",
+                        "#EEF6FF"),
+
+                ParticleKind.Rain =>
+                    Pick(
+                        "#7EA7D8",
+                        "#6F95C5",
+                        "#A0BDE0"),
+
+                ParticleKind.Firefly =>
+                    Pick(
+                        "#FFF59D",
+                        "#F9F871",
+                        "#FFE66D"),
+
+                ParticleKind.Star =>
+                    Pick(
+                        "#FFFFFF",
+                        "#EADFFF",
+                        "#FFDCF1"),
+
+                _ =>
+                    "#FFFFFF"
             };
 
         return new SolidColorBrush(
-            colors[
-                _random.Next(
-                    colors.Length)]);
+            Color.Parse(color));
+    }
+
+    private double GetSpeed(
+        ParticleKind kind)
+    {
+        return kind switch
+        {
+            ParticleKind.Petal =>
+                RandomRange(22, 45),
+
+            ParticleKind.Leaf =>
+                RandomRange(28, 55),
+
+            ParticleKind.Snow =>
+                RandomRange(12, 30),
+
+            ParticleKind.Rain =>
+                RandomRange(180, 300),
+
+            ParticleKind.Firefly =>
+                RandomRange(3, 10),
+
+            ParticleKind.Star =>
+                RandomRange(5, 15),
+
+            _ =>
+                30
+        };
+    }
+
+    private double GetDrift(
+        ParticleKind kind)
+    {
+        return kind switch
+        {
+            ParticleKind.Rain =>
+                0,
+
+            ParticleKind.Snow =>
+                12,
+
+            ParticleKind.Firefly =>
+                22,
+
+            ParticleKind.Star =>
+                8,
+
+            _ =>
+                16
+        };
+    }
+
+    private string Pick(
+        params string[] values)
+    {
+        return values[
+            _random.Next(
+                values.Length)];
     }
 
     private double RandomRange(

@@ -8,7 +8,10 @@ namespace Axiom.Views;
 public partial class EffectLayer : UserControl
 {
     private readonly Canvas _canvas;
+
     private readonly ParticleEngine _particles;
+
+    private readonly NyanCatService _nyan;
 
     public EffectLayer()
     {
@@ -24,6 +27,10 @@ public partial class EffectLayer : UserControl
             new ParticleEngine(
                 _canvas);
 
+        _nyan =
+            new NyanCatService(
+                _canvas);
+
         EffectService.Current.SettingsChanged +=
             SettingsChanged;
 
@@ -34,12 +41,14 @@ public partial class EffectLayer : UserControl
             (_, _) =>
             {
                 _particles.Start();
+                _nyan.Start();
             };
 
         DetachedFromVisualTree +=
             (_, _) =>
             {
                 _particles.Stop();
+                _nyan.Stop();
             };
     }
 
@@ -48,15 +57,16 @@ public partial class EffectLayer : UserControl
         EventArgs e)
     {
         if (!EffectService.Current.Settings.Enabled)
-        {
             _particles.Clear();
-        }
     }
 
     private void PreviewRequested(
         object? sender,
         EventArgs e)
     {
-        _particles.Burst(20);
+        _particles.Burst(30);
+
+        if (EffectService.Current.Settings.NyanCatEnabled)
+            _nyan.Preview();
     }
 }

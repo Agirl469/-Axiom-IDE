@@ -2,6 +2,7 @@
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
+
 using Axiom.Effects;
 
 namespace Axiom.Views;
@@ -10,10 +11,24 @@ public partial class EffectsSettingsView : UserControl
 {
     private readonly EffectService _effects =
         EffectService.Current;
+
     private readonly EffectPackageService _packages =
-    new();
+        new();
+
+    private readonly CustomEffectsManager _custom =
+        new();
+
     private readonly ToggleSwitch _effectsEnabled;
-    private readonly ToggleSwitch _petalsEnabled;
+
+    private readonly ComboBox _profileBox;
+
+    private readonly CheckBox _petalsEnabled;
+    private readonly CheckBox _leavesEnabled;
+    private readonly CheckBox _snowEnabled;
+    private readonly CheckBox _rainEnabled;
+    private readonly CheckBox _firefliesEnabled;
+    private readonly CheckBox _starsEnabled;
+    private readonly CheckBox _nyanCatEnabled;
 
     private readonly Slider _densitySlider;
     private readonly Slider _speedSlider;
@@ -29,6 +44,8 @@ public partial class EffectsSettingsView : UserControl
     private readonly TextBlock _windText;
     private readonly TextBlock _particleLimitText;
 
+    private readonly ListBox _customEffectList;
+
     private readonly TextBlock _statusText;
 
     private bool _loading;
@@ -41,9 +58,37 @@ public partial class EffectsSettingsView : UserControl
             Get<ToggleSwitch>(
                 "EffectsEnabled");
 
+        _profileBox =
+            Get<ComboBox>(
+                "ProfileBox");
+
         _petalsEnabled =
-            Get<ToggleSwitch>(
+            Get<CheckBox>(
                 "PetalsEnabled");
+
+        _leavesEnabled =
+            Get<CheckBox>(
+                "LeavesEnabled");
+
+        _snowEnabled =
+            Get<CheckBox>(
+                "SnowEnabled");
+
+        _rainEnabled =
+            Get<CheckBox>(
+                "RainEnabled");
+
+        _firefliesEnabled =
+            Get<CheckBox>(
+                "FirefliesEnabled");
+
+        _starsEnabled =
+            Get<CheckBox>(
+                "StarsEnabled");
+
+        _nyanCatEnabled =
+            Get<CheckBox>(
+                "NyanCatEnabled");
 
         _densitySlider =
             Get<Slider>(
@@ -93,11 +138,20 @@ public partial class EffectsSettingsView : UserControl
             Get<TextBlock>(
                 "ParticleLimitText");
 
+        _customEffectList =
+            Get<ListBox>(
+                "CustomEffectList");
+
         _statusText =
             Get<TextBlock>(
                 "StatusText");
 
+        _profileBox.ItemsSource =
+            EffectProfiles.Names;
+
         LoadSettings();
+
+        RefreshCustomEffects();
     }
 
     private T Get<T>(
@@ -108,196 +162,58 @@ public partial class EffectsSettingsView : UserControl
             ?? throw new InvalidOperationException(
                 $"{name} was not found.");
     }
-    private async void ImportEffect_Click(
-    object? sender,
-    RoutedEventArgs e)
-    {
-        var top =
-            TopLevel.GetTopLevel(this);
-
-        if (top is null)
-            return;
-
-        var files =
-            await top.StorageProvider
-                .OpenFilePickerAsync(
-                    new FilePickerOpenOptions
-                    {
-                        Title =
-                            "Import Axiom Effect",
-
-                        AllowMultiple =
-                            false,
-
-                        FileTypeFilter =
-                        [
-                            new FilePickerFileType(
-                            "Axiom Effect")
-                        {
-                            Patterns =
-                            [
-                                "*.axfx"
-                            ]
-                        }
-                        ]
-                    });
-
-        var path =
-            files
-                .FirstOrDefault()?
-                .TryGetLocalPath();
-
-        if (string.IsNullOrWhiteSpace(
-                path))
-        {
-            return;
-        }
-
-        try
-        {
-            _statusText.Text =
-                "Checking package...";
-
-            var imported =
-                await _packages.ImportAsync(
-                    path);
-
-            _statusText.Text =
-                $"Imported {imported.Manifest.Name}.";
-        }
-        catch (Exception ex)
-        {
-            _statusText.Text =
-                $"Import failed: {ex.Message}";
-        }
-    }
-
-
-
-    private async void ExportEffect_Click(
-    object? sender,
-    RoutedEventArgs e)
-    {
-        var top =
-            TopLevel.GetTopLevel(this);
-
-        if (top is null)
-            return;
-
-        var folders =
-            await top.StorageProvider
-                .OpenFolderPickerAsync(
-                    new FolderPickerOpenOptions
-                    {
-                        Title =
-                            "Choose Custom Effect Folder",
-
-                        AllowMultiple =
-                            false
-                    });
-
-        var effectFolder =
-            folders
-                .FirstOrDefault()?
-                .TryGetLocalPath();
-
-        if (string.IsNullOrWhiteSpace(
-                effectFolder))
-        {
-            return;
-        }
-
-        var destination =
-            await top.StorageProvider
-                .SaveFilePickerAsync(
-                    new FilePickerSaveOptions
-                    {
-                        Title =
-                            "Export Axiom Effect",
-
-                        SuggestedFileName =
-                            "effect.axfx",
-
-                        FileTypeChoices =
-                        [
-                            new FilePickerFileType(
-                            "Axiom Effect")
-                        {
-                            Patterns =
-                            [
-                                "*.axfx"
-                            ]
-                        }
-                        ]
-                    });
-
-        var destinationPath =
-            destination?
-                .TryGetLocalPath();
-
-        if (string.IsNullOrWhiteSpace(
-                destinationPath))
-        {
-            return;
-        }
-
-        if (!destinationPath.EndsWith(
-                ".axfx",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            destinationPath +=
-                ".axfx";
-        }
-
-        try
-        {
-            _statusText.Text =
-                "Exporting...";
-
-            await _packages.ExportAsync(
-                effectFolder,
-                destinationPath);
-
-            _statusText.Text =
-                "Effect exported.";
-        }
-        catch (Exception ex)
-        {
-            _statusText.Text =
-                $"Export failed: {ex.Message}";
-        }
-    }
 
     private void LoadSettings()
     {
         _loading = true;
 
-        var settings =
+        var s =
             _effects.Settings;
 
         _effectsEnabled.IsChecked =
-            settings.Enabled;
+            s.Enabled;
+
+        _profileBox.SelectedItem =
+            s.Profile;
 
         _petalsEnabled.IsChecked =
-            settings.PetalsEnabled;
+            s.PetalsEnabled;
+
+        _leavesEnabled.IsChecked =
+            s.LeavesEnabled;
+
+        _snowEnabled.IsChecked =
+            s.SnowEnabled;
+
+        _rainEnabled.IsChecked =
+            s.RainEnabled;
+
+        _firefliesEnabled.IsChecked =
+            s.FirefliesEnabled;
+
+        _starsEnabled.IsChecked =
+            s.StarsEnabled;
+
+        _nyanCatEnabled.IsChecked =
+            s.NyanCatEnabled;
 
         _densitySlider.Value =
-            settings.Density;
+            s.Density;
 
         _speedSlider.Value =
-            settings.Speed;
+            s.Speed;
 
         _opacitySlider.Value =
-            settings.Opacity;
+            s.Opacity;
 
         _sizeSlider.Value =
-            settings.Size;
+            s.Size;
 
         _windSlider.Value =
-            settings.Wind;
+            s.Wind;
 
         _particleLimitSlider.Value =
-            settings.MaxParticles;
+            s.MaxParticles;
 
         UpdateLabels();
 
@@ -306,32 +222,58 @@ public partial class EffectsSettingsView : UserControl
 
     private void ApplyControls()
     {
+        if (_loading)
+            return;
+
         _effects.Update(
-            settings =>
+            s =>
             {
-                settings.Enabled =
+                s.Enabled =
                     _effectsEnabled.IsChecked == true;
 
-                settings.PetalsEnabled =
+                s.Profile =
+                    _profileBox.SelectedItem?
+                        .ToString()
+                    ?? "Custom";
+
+                s.PetalsEnabled =
                     _petalsEnabled.IsChecked == true;
 
-                settings.Density =
+                s.LeavesEnabled =
+                    _leavesEnabled.IsChecked == true;
+
+                s.SnowEnabled =
+                    _snowEnabled.IsChecked == true;
+
+                s.RainEnabled =
+                    _rainEnabled.IsChecked == true;
+
+                s.FirefliesEnabled =
+                    _firefliesEnabled.IsChecked == true;
+
+                s.StarsEnabled =
+                    _starsEnabled.IsChecked == true;
+
+                s.NyanCatEnabled =
+                    _nyanCatEnabled.IsChecked == true;
+
+                s.Density =
                     (int)Math.Round(
                         _densitySlider.Value);
 
-                settings.Speed =
+                s.Speed =
                     _speedSlider.Value;
 
-                settings.Opacity =
+                s.Opacity =
                     _opacitySlider.Value;
 
-                settings.Size =
+                s.Size =
                     _sizeSlider.Value;
 
-                settings.Wind =
+                s.Wind =
                     _windSlider.Value;
 
-                settings.MaxParticles =
+                s.MaxParticles =
                     (int)Math.Round(
                         _particleLimitSlider.Value);
             });
@@ -342,9 +284,7 @@ public partial class EffectsSettingsView : UserControl
     private void UpdateLabels()
     {
         _densityText.Text =
-            Math.Round(
-                _densitySlider.Value)
-            .ToString();
+            $"{_densitySlider.Value:0}";
 
         _speedText.Text =
             $"{_speedSlider.Value:0.0}x";
@@ -356,21 +296,20 @@ public partial class EffectsSettingsView : UserControl
             $"{_sizeSlider.Value:0}px";
 
         _windText.Text =
-            _windSlider.Value.ToString(
-                "0.0");
+            $"{_windSlider.Value:0.0}";
 
         _particleLimitText.Text =
-            Math.Round(
-                _particleLimitSlider.Value)
-            .ToString();
+            $"{_particleLimitSlider.Value:0}";
     }
 
     private void SettingChanged(
-     object? sender,
-     RoutedEventArgs e)
+        object? sender,
+        RoutedEventArgs e)
     {
         if (_loading)
             return;
+
+        SetCustomProfile();
 
         ApplyControls();
     }
@@ -382,7 +321,44 @@ public partial class EffectsSettingsView : UserControl
         if (_loading)
             return;
 
+        SetCustomProfile();
+
         ApplyControls();
+    }
+
+    private void SetCustomProfile()
+    {
+        _loading = true;
+
+        _profileBox.SelectedItem =
+            "Custom";
+
+        _loading = false;
+    }
+
+    private void ProfileChanged(
+        object? sender,
+        SelectionChangedEventArgs e)
+    {
+        if (_loading)
+            return;
+
+        var profile =
+            _profileBox.SelectedItem?
+                .ToString();
+
+        if (string.IsNullOrWhiteSpace(profile))
+            return;
+
+        _effects.Update(
+            settings =>
+                EffectProfiles.Apply(
+                    settings,
+                    profile));
+
+        LoadSettings();
+
+        _effects.Preview();
     }
 
     private void Preview_Click(
@@ -394,7 +370,7 @@ public partial class EffectsSettingsView : UserControl
         _effects.Preview();
 
         _statusText.Text =
-            "Previewing effect.";
+            "Previewing effects.";
     }
 
     private async void Save_Click(
@@ -419,5 +395,216 @@ public partial class EffectsSettingsView : UserControl
 
         _statusText.Text =
             "Effects reset.";
+    }
+
+    private async void ImportEffect_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        var top =
+            TopLevel.GetTopLevel(this);
+
+        if (top is null)
+            return;
+
+        var files =
+            await top.StorageProvider
+                .OpenFilePickerAsync(
+                    new FilePickerOpenOptions
+                    {
+                        Title =
+                            "Import Axiom Effect",
+
+                        AllowMultiple =
+                            false,
+
+                        FileTypeFilter =
+                        [
+                            new FilePickerFileType(
+                                "Axiom Effect")
+                            {
+                                Patterns =
+                                [
+                                    "*.axfx"
+                                ]
+                            }
+                        ]
+                    });
+
+        var path =
+            files.FirstOrDefault()?
+                .TryGetLocalPath();
+
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            var imported =
+                await _packages.ImportAsync(
+                    path);
+
+            RefreshCustomEffects();
+
+            _statusText.Text =
+                $"Imported {imported.Manifest.Name}.";
+        }
+        catch (Exception ex)
+        {
+            _statusText.Text =
+                $"Import failed: {ex.Message}";
+        }
+    }
+
+    private void RefreshCustomEffects()
+    {
+        _customEffectList.ItemsSource =
+            _custom.GetInstalled();
+    }
+
+    private InstalledEffect? SelectedEffect =>
+        _customEffectList.SelectedItem
+            as InstalledEffect;
+
+    private async void ToggleCustomEffect_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        var effect =
+            SelectedEffect;
+
+        if (effect is null)
+            return;
+
+        var enabled =
+            !_custom.IsEnabled(effect);
+
+        _custom.SetEnabled(
+            effect,
+            enabled);
+
+        await _effects.SaveAsync();
+
+        _statusText.Text =
+            enabled
+                ? $"Enabled {effect.Name}."
+                : $"Disabled {effect.Name}.";
+    }
+
+    private void PreviewCustomEffect_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        var effect =
+            SelectedEffect;
+
+        if (effect is null)
+            return;
+
+        _effects.Preview();
+
+        _statusText.Text =
+            $"Previewing {effect.Name}.";
+    }
+
+    private async void ExportCustomEffect_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        var effect =
+            SelectedEffect;
+
+        if (effect is null)
+            return;
+
+        var top =
+            TopLevel.GetTopLevel(this);
+
+        if (top is null)
+            return;
+
+        var file =
+            await top.StorageProvider
+                .SaveFilePickerAsync(
+                    new FilePickerSaveOptions
+                    {
+                        Title =
+                            "Export Effect",
+
+                        SuggestedFileName =
+                            effect.Name +
+                            ".axfx",
+
+                        FileTypeChoices =
+                        [
+                            new FilePickerFileType(
+                                "Axiom Effect")
+                            {
+                                Patterns =
+                                [
+                                    "*.axfx"
+                                ]
+                            }
+                        ]
+                    });
+
+        var output =
+            file?.TryGetLocalPath();
+
+        if (string.IsNullOrWhiteSpace(output))
+            return;
+
+        if (!output.EndsWith(
+                ".axfx",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            output += ".axfx";
+        }
+
+        try
+        {
+            await _packages.ExportAsync(
+                effect.Directory,
+                output);
+
+            _statusText.Text =
+                $"Exported {effect.Name}.";
+        }
+        catch (Exception ex)
+        {
+            _statusText.Text =
+                $"Export failed: {ex.Message}";
+        }
+    }
+
+    private void OpenCustomEffectFolder_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        var effect =
+            SelectedEffect;
+
+        if (effect is null)
+            return;
+
+        _custom.OpenFolder(effect);
+    }
+
+    private void RemoveCustomEffect_Click(
+        object? sender,
+        RoutedEventArgs e)
+    {
+        var effect =
+            SelectedEffect;
+
+        if (effect is null)
+            return;
+
+        _custom.Remove(effect);
+
+        RefreshCustomEffects();
+
+        _statusText.Text =
+            $"Removed {effect.Name}.";
     }
 }
