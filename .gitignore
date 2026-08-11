@@ -27,3 +27,7 @@ Thumbs.db
 
 
 *.log
+
+
+!src/Axiom/Build/
+!src/Axiom/Build/*.cs
