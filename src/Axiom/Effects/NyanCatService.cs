@@ -8,6 +8,9 @@ public sealed class NyanCatService
 {
     private readonly Canvas _canvas;
 
+    private readonly EffectTextureService _textures =
+        new();
+
     private readonly DispatcherTimer _checkTimer;
 
     private readonly Random _random =
@@ -15,12 +18,13 @@ public sealed class NyanCatService
 
     private DateTime _nextAppearance;
 
-    private TextBlock? _cat;
+    private Image? _cat;
 
     public NyanCatService(
         Canvas canvas)
     {
-        _canvas = canvas;
+        _canvas =
+            canvas;
 
         _checkTimer =
             new DispatcherTimer
@@ -44,11 +48,7 @@ public sealed class NyanCatService
     {
         _checkTimer.Stop();
 
-        if (_cat is not null)
-        {
-            _canvas.Children.Remove(_cat);
-            _cat = null;
-        }
+        RemoveCat();
     }
 
     public void Preview()
@@ -76,7 +76,6 @@ public sealed class NyanCatService
         }
 
         Spawn();
-
         ScheduleNext();
     }
 
@@ -110,39 +109,69 @@ public sealed class NyanCatService
         if (_cat is not null)
             return;
 
-        if (_canvas.Bounds.Width <= 0)
+        if (_canvas.Bounds.Width <= 0 ||
+            _canvas.Bounds.Height <= 0)
+        {
+            return;
+        }
+
+        var bitmap =
+            _textures.LoadBuiltIn(
+                "Nyan/nyan_cat.png");
+
+        if (bitmap is null)
             return;
 
         var cat =
-            new TextBlock
+            new Image
             {
-                Text = "🌈  🐱",
-                FontSize = 28,
-                IsHitTestVisible = false,
-                Opacity = 0.95
+                Source =
+                    bitmap,
+
+                Width =
+                    160,
+
+                Height =
+                    90,
+
+                Stretch =
+                    Stretch.Uniform,
+
+                IsHitTestVisible =
+                    false,
+
+                Opacity =
+                    0.95
             };
 
-        _cat = cat;
+        _cat =
+            cat;
 
-        var x = -100.0;
+        var x =
+            -180.0;
 
-        var maxX =
-            _canvas.Bounds.Width + 120;
+        var endX =
+            _canvas.Bounds.Width +
+            180;
 
         var y =
             Math.Max(
-                20,
+                30,
                 _canvas.Bounds.Height *
-                (
-                    0.2 +
-                    _random.NextDouble() *
-                    0.55
-                ));
+                RandomRange(
+                    0.2,
+                    0.7));
 
-        Canvas.SetLeft(cat, x);
-        Canvas.SetTop(cat, y);
+        Canvas.SetLeft(
+            cat,
+            x);
 
-        _canvas.Children.Add(cat);
+        Canvas.SetTop(
+            cat,
+            y);
+
+        _canvas.Children.Add(
+            cat);
 
         var timer =
             new DispatcherTimer
@@ -154,18 +183,26 @@ public sealed class NyanCatService
         timer.Tick +=
             (_, _) =>
             {
-                x += 5.5;
+                if (_cat is null)
+                {
+                    timer.Stop();
+                    return;
+                }
+
+                x +=
+                    5.5;
 
                 Canvas.SetLeft(
                     cat,
                     x);
 
-                if (x <= maxX)
+                if (x <= endX)
                     return;
 
                 timer.Stop();
 
-                _canvas.Children.Remove(cat);
+                _canvas.Children.Remove(
+                    cat);
 
                 if (ReferenceEquals(
                         _cat,
@@ -176,5 +213,25 @@ public sealed class NyanCatService
             };
 
         timer.Start();
+    }
+
+    private void RemoveCat()
+    {
+        if (_cat is null)
+            return;
+
+        _canvas.Children.Remove(
+            _cat);
+
+        _cat = null;
+    }
+
+    private double RandomRange(
+        double min,
+        double max)
+    {
+        return min +
+               _random.NextDouble() *
+               (max - min);
     }
 }

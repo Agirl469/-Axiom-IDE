@@ -6,6 +6,8 @@ internal sealed class Particle
 {
     public required Control Control { get; init; }
 
+    public ParticleKind Kind { get; set; }
+
     public double X { get; set; }
     public double Y { get; set; }
 
@@ -17,11 +19,14 @@ internal sealed class Particle
 
     public double DriftPhase { get; set; }
     public double DriftSpeed { get; set; }
+    public double DriftAmount { get; set; }
 
     public double Age { get; set; }
     public double Lifetime { get; set; }
 
-    public ParticleKind Kind { get; set; }
+    public double BaseOpacity { get; set; }
+
+    public bool Pulse { get; set; }
 }
 
 internal enum ParticleKind
@@ -29,7 +34,11 @@ internal enum ParticleKind
     Petal,
     Leaf,
     Snow,
-    Rain,
+    Star,
     Firefly,
-    Star
+    Rain,
+    Heart,
+    Butterfly,
+    Feather,
+    Custom
 }

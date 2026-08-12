@@ -2,18 +2,18 @@
 
 public sealed class EffectSettings
 {
-    public bool Enabled { get; set; } = true;
+    public bool Enabled { get; set; } = false;
 
-    public string Profile { get; set; } = "Sakura";
+    public string Profile { get; set; } = "Minimal";
 
-    public bool PetalsEnabled { get; set; } = true;
+    public bool PetalsEnabled { get; set; } = false;
     public bool LeavesEnabled { get; set; }
     public bool SnowEnabled { get; set; }
     public bool RainEnabled { get; set; }
     public bool FirefliesEnabled { get; set; }
     public bool StarsEnabled { get; set; }
 
-    public bool NyanCatEnabled { get; set; } = true;
+    public bool NyanCatEnabled { get; set; } = false;
 
     public int Density { get; set; } = 6;
 
@@ -29,6 +29,10 @@ public sealed class EffectSettings
 
     public double NyanMinMinutes { get; set; } = 5;
     public double NyanMaxMinutes { get; set; } = 20;
+
+    public bool HeartsEnabled { get; set; }
+    public bool ButterfliesEnabled { get; set; }
+    public bool FeathersEnabled { get; set; }
 
     public List<string> EnabledCustomEffects { get; set; } = [];
 }

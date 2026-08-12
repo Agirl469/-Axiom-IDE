@@ -1,105 +1,127 @@
 <UserControl
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:views="clr-namespace:Axiom.Views"
     x:Class="Axiom.Views.SettingsView">
 
-	<ScrollViewer
-        VerticalScrollBarVisibility="Auto">
+	<Grid
+        ColumnDefinitions="190,*"
+        Background="{DynamicResource AxiomBackground}">
 
-		<StackPanel
-            Margin="24"
-            Spacing="14">
 
-			<TextBlock
-                Text="Settings"
-                FontSize="26"
-                FontWeight="SemiBold" />
+		<!-- SETTINGS SIDEBAR -->
+		<Border
+            Grid.Column="0"
+            Background="{DynamicResource AxiomPanel}"
+            BorderBrush="{DynamicResource AxiomBorder}"
+            BorderThickness="0,0,1,0">
 
-			<TextBlock
-                Text="Configure the editor and shortcuts."
-                Classes="muted" />
+			<Grid
+                RowDefinitions="Auto,*"
+                Margin="12">
 
-			<Border
-                Classes="panel"
-                Padding="18">
-
-				<StackPanel Spacing="12">
+				<StackPanel
+                    Margin="4,8,4,18"
+                    Spacing="3">
 
 					<TextBlock
-                        Text="Editor"
-                        FontSize="18"
-                        FontWeight="SemiBold" />
-
-					<Grid ColumnDefinitions="*,180">
-
-						<TextBlock
-                            Text="Font size"
-                            VerticalAlignment="Center" />
-
-						<NumericUpDown
-                            Grid.Column="1"
-                            Value="14"
-                            Minimum="9"
-                            Maximum="30" />
-
-					</Grid>
-
-					<Grid ColumnDefinitions="*,180">
-
-						<TextBlock
-                            Text="Tab width"
-                            VerticalAlignment="Center" />
-
-						<NumericUpDown
-                            Grid.Column="1"
-                            Value="4"
-                            Minimum="2"
-                            Maximum="8" />
-
-					</Grid>
-
-				</StackPanel>
-
-			</Border>
-
-			<Border
-                Classes="panel"
-                Padding="0">
-
-				<views:KeybindsView />
-
-			</Border>
-			<Border
-				Classes="panel"
-				Padding="14">
-
-				<views:EffectsSettingsView />
-
-			</Border>
-			
-			<Border
-                Classes="panel"
-                Padding="18">
-
-				<StackPanel Spacing="8">
-
-					<TextBlock
-                        Text="Privacy"
-                        FontSize="18"
+                        Text="Settings"
+                        FontSize="22"
                         FontWeight="SemiBold" />
 
 					<TextBlock
-                        Text="Axiom has no telemetry, account system, cloud sync, or built-in AI service."
+                        Text="Customize Axiom"
                         Classes="muted"
-                        TextWrapping="Wrap" />
+                        FontSize="12" />
+
+				</StackPanel>
+
+
+				<ListBox
+                    x:Name="CategoryList"
+                    Grid.Row="1"
+                    SelectionChanged="CategoryList_SelectionChanged">
+
+					<ListBoxItem Tag="general">
+						<TextBlock Text="General" />
+					</ListBoxItem>
+
+					<ListBoxItem Tag="appearance">
+						<TextBlock Text="Appearance" />
+					</ListBoxItem>
+
+					<ListBoxItem Tag="editor">
+						<TextBlock Text="Editor" />
+					</ListBoxItem>
+
+					<ListBoxItem Tag="keybinds">
+						<TextBlock Text="Keybinds" />
+					</ListBoxItem>
+
+					<ListBoxItem Tag="effects">
+						<TextBlock Text="Effects" />
+					</ListBoxItem>
+
+					<ListBoxItem Tag="plugins">
+						<TextBlock Text="Plugins" />
+					</ListBoxItem>
+
+					<ListBoxItem Tag="toolchains">
+						<TextBlock Text="Toolchains" />
+					</ListBoxItem>
+
+					<ListBoxItem Tag="privacy">
+						<TextBlock Text="Privacy" />
+					</ListBoxItem>
+
+				</ListBox>
+
+			</Grid>
+
+		</Border>
+
+
+		<!-- RIGHT SIDE -->
+		<Grid
+            Grid.Column="1"
+            RowDefinitions="Auto,*">
+
+			<Border
+                Grid.Row="0"
+                Padding="24,20,24,16"
+                BorderBrush="{DynamicResource AxiomBorder}"
+                BorderThickness="0,0,0,1">
+
+				<StackPanel Spacing="3">
+
+					<TextBlock
+                        x:Name="PageTitle"
+                        Text="General"
+                        FontSize="23"
+                        FontWeight="SemiBold" />
+
+					<TextBlock
+                        x:Name="PageDescription"
+                        Text="General Axiom preferences."
+                        Classes="muted" />
 
 				</StackPanel>
 
 			</Border>
 
-		</StackPanel>
 
-	</ScrollViewer>
+			<ScrollViewer
+                Grid.Row="1"
+                VerticalScrollBarVisibility="Auto">
+
+				<ContentControl
+                    x:Name="SettingsHost"
+                    Margin="24"
+                    HorizontalContentAlignment="Stretch" />
+
+			</ScrollViewer>
+
+		</Grid>
+
+	</Grid>
 
 </UserControl>

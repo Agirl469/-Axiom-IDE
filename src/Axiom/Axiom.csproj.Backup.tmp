@@ -6,14 +6,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))"></ApplicationIcon>
   </PropertyGroup>
-<ItemGroup>
-  <AvaloniaResource Include="Assets/**/*" />
-</ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
-    <PackageReference Include="MoonSharp" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Assets\Effects\" />
   </ItemGroup>
 </Project>

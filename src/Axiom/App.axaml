@@ -1,98 +1,354 @@
 <Application
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    x:Class="Axiom.App">
-
-	<Application.Resources>
-
-		<SolidColorBrush
-    x:Key="SearchHighlight"
-    Color="#71557F" />
-		
-		
-		<SolidColorBrush
-            x:Key="AxiomBackground"
-            Color="#18181B" />
-
-		<SolidColorBrush
-            x:Key="AxiomPanel"
-            Color="#202024" />
-
-		<SolidColorBrush
-            x:Key="AxiomBorder"
-            Color="#303036" />
-
-		<SolidColorBrush
-            x:Key="AxiomForeground"
-            Color="#E8E8EA" />
-
-		<SolidColorBrush
-            x:Key="AxiomMuted"
-            Color="#92929A" />
-
-		<SolidColorBrush
-            x:Key="AxiomAccent"
-            Color="#8B5CF6" />
-
-		<SolidColorBrush
-            x:Key="EditorBackground"
-            Color="#121214" />
-
-		<SolidColorBrush
-            x:Key="EditorForeground"
-            Color="#E8E8EA" />
-
-		<SolidColorBrush
-            x:Key="EditorSelection"
-            Color="#35313D" />
-
-	</Application.Resources>
+    x:Class="Axiom.App"
+    RequestedThemeVariant="Dark">
 
 	<Application.Styles>
 
 		<FluentTheme />
+
+		<!-- Base window -->
 		<Style Selector="Window">
 			<Setter
-				Property="Background"
-				Value="{DynamicResource AxiomBackground}" />
+                Property="Background"
+                Value="{DynamicResource AxiomBackground}" />
 
 			<Setter
-				Property="Foreground"
-				Value="{DynamicResource AxiomForeground}" />
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
 
 			<Setter
-				Property="FontFamily"
-				Value="{DynamicResource AxiomUiFont}" />
+                Property="FontFamily"
+                Value="{DynamicResource AxiomUiFont}" />
 
 			<Setter
-				Property="FontSize"
-				Value="{DynamicResource AxiomUiFontSize}" />
+                Property="FontSize"
+                Value="{DynamicResource AxiomUiFontSize}" />
 		</Style>
 
+
+		<!-- User controls -->
+		<Style Selector="UserControl">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomBackground}" />
+
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
+		</Style>
+
+
+		<!-- Normal buttons -->
 		<Style Selector="Button">
 			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControl}" />
+
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
+
+			<Setter
+                Property="BorderBrush"
+                Value="{DynamicResource AxiomBorder}" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="1" />
+
+			<Setter
                 Property="CornerRadius"
-                Value="4" />
+                Value="5" />
 
 			<Setter
                 Property="Padding"
-                Value="12,7" />
-		</Style>
-
-		<Style Selector="Border.panel">
-			<Setter
-				Property="Background"
-				Value="{DynamicResource AxiomPanel}" />
+                Value="11,6" />
 
 			<Setter
-				Property="BorderBrush"
-				Value="{DynamicResource AxiomBorder}" />
+                Property="MinHeight"
+                Value="30" />
 		</Style>
 
+		<Style Selector="Button:pointerover">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControlHover}" />
+		</Style>
+
+
+		<!-- Primary button -->
+		<Style Selector="Button.primary">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomAccent}" />
+
+			<Setter
+                Property="BorderBrush"
+                Value="{DynamicResource AxiomAccent}" />
+
+			<Setter
+                Property="Foreground"
+                Value="White" />
+		</Style>
+
+		<Style Selector="Button.primary:pointerover">
+			<Setter
+                Property="Opacity"
+                Value="0.88" />
+		</Style>
+
+
+		<!-- Flat/toolbar button -->
+		<Style Selector="Button.ghost">
+			<Setter
+                Property="Background"
+                Value="Transparent" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="0" />
+
+			<Setter
+                Property="Padding"
+                Value="8,5" />
+		</Style>
+
+		<Style Selector="Button.ghost:pointerover">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControlHover}" />
+		</Style>
+
+
+		<!-- Danger -->
+		<Style Selector="Button.danger">
+			<Setter
+                Property="Foreground"
+                Value="#FF8585" />
+		</Style>
+
+
+		<!-- Cards -->
+		<Style Selector="Border.card">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomCard}" />
+
+			<Setter
+                Property="BorderBrush"
+                Value="{DynamicResource AxiomBorder}" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="1" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="7" />
+
+			<Setter
+                Property="Padding"
+                Value="16" />
+		</Style>
+
+
+		<!-- Existing panel class -->
 		<Style Selector="Border.panel">
 			<Setter
                 Property="Background"
-                Value="{DynamicResource AxiomPanel}" />
+                Value="{DynamicResource AxiomCard}" />
+
+			<Setter
+                Property="BorderBrush"
+                Value="{DynamicResource AxiomBorder}" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="1" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="7" />
+		</Style>
+
+
+		<!-- Text boxes -->
+		<Style Selector="TextBox">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControl}" />
+
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
+
+			<Setter
+                Property="BorderBrush"
+                Value="{DynamicResource AxiomBorder}" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="5" />
+
+			<Setter
+                Property="MinHeight"
+                Value="30" />
+		</Style>
+
+
+		<!-- Combo boxes -->
+		<Style Selector="ComboBox">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControl}" />
+
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
+
+			<Setter
+                Property="BorderBrush"
+                Value="{DynamicResource AxiomBorder}" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="5" />
+
+			<Setter
+                Property="MinHeight"
+                Value="30" />
+		</Style>
+
+
+		<!-- Lists -->
+		<Style Selector="ListBox">
+			<Setter
+                Property="Background"
+                Value="Transparent" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="0" />
+		</Style>
+
+		<Style Selector="ListBoxItem">
+			<Setter
+                Property="Padding"
+                Value="10,7" />
+
+			<Setter
+                Property="Margin"
+                Value="0,2" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="5" />
+		</Style>
+
+		<Style Selector="ListBoxItem:pointerover">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControlHover}" />
+		</Style>
+
+		<Style Selector="ListBoxItem:selected">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomAccentSoft}" />
+
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
+		</Style>
+
+
+		<!-- Muted text -->
+		<Style Selector="TextBlock.muted">
+			<Setter
+				Property="Foreground"
+				Value="{DynamicResource AxiomMuted}" />
+		</Style>
+
+
+		<!-- Section title -->
+		<Style Selector="TextBlock.sectionTitle">
+			<Setter
+                Property="FontSize"
+                Value="16" />
+
+			<Setter
+                Property="FontWeight"
+                Value="SemiBold" />
+		</Style>
+
+
+		<!-- Sidebar navigation -->
+		<Style Selector="Button.nav">
+			<Setter
+                Property="HorizontalContentAlignment"
+                Value="Left" />
+
+			<Setter
+                Property="Background"
+                Value="Transparent" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="0" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="5" />
+
+			<Setter
+                Property="Padding"
+                Value="10,7" />
+		</Style>
+
+		<Style Selector="Button.nav:pointerover">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControlHover}" />
+		</Style>
+
+
+		<!-- Bottom editor tabs -->
+		<Style Selector="Button.bottomTab">
+			<Setter
+                Property="Background"
+                Value="Transparent" />
+
+			<Setter
+                Property="BorderThickness"
+                Value="0" />
+
+			<Setter
+                Property="Padding"
+                Value="10,5" />
+
+			<Setter
+                Property="CornerRadius"
+                Value="4" />
+		</Style>
+
+		<Style Selector="Button.bottomTab:pointerover">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomControlHover}" />
+		</Style>
+
+
+		<!-- Tooltips -->
+		<Style Selector="ToolTip">
+			<Setter
+                Property="Background"
+                Value="{DynamicResource AxiomCard}" />
+
+			<Setter
+                Property="Foreground"
+                Value="{DynamicResource AxiomForeground}" />
 
 			<Setter
                 Property="BorderBrush"
@@ -107,12 +363,94 @@
                 Value="5" />
 		</Style>
 
-		<Style Selector="TextBlock.muted">
-			<Setter
-                Property="Foreground"
-                Value="{DynamicResource AxiomMuted}" />
-		</Style>
-
 	</Application.Styles>
+
+
+	<Application.Resources>
+
+		<!-- UI -->
+		<SolidColorBrush
+            x:Key="AxiomBackground"
+            Color="#0D1018" />
+
+		<SolidColorBrush
+            x:Key="AxiomPanel"
+            Color="#111621" />
+
+		<SolidColorBrush
+            x:Key="AxiomCard"
+            Color="#151B27" />
+
+		<SolidColorBrush
+            x:Key="AxiomControl"
+            Color="#1A2130" />
+
+		<SolidColorBrush
+            x:Key="AxiomControlHover"
+            Color="#222B3D" />
+
+		<SolidColorBrush
+            x:Key="AxiomBorder"
+            Color="#273044" />
+
+		<SolidColorBrush
+            x:Key="AxiomForeground"
+            Color="#ECEEF5" />
+
+		<SolidColorBrush
+            x:Key="AxiomMuted"
+            Color="#8F98AA" />
+
+
+		<!-- Accent -->
+		<SolidColorBrush
+            x:Key="AxiomAccent"
+            Color="#8258E8" />
+
+		<SolidColorBrush
+            x:Key="AxiomAccentSoft"
+            Color="#35265D" />
+
+
+		<!-- Editor -->
+		<SolidColorBrush
+            x:Key="EditorBackground"
+            Color="#0A0D13" />
+
+		<SolidColorBrush
+            x:Key="EditorForeground"
+            Color="#DDE2EA" />
+
+		<SolidColorBrush
+            x:Key="EditorSelection"
+            Color="#473474" />
+
+		<SolidColorBrush
+            x:Key="SearchHighlight"
+            Color="#7357A7" />
+
+
+		<!-- Typography -->
+		<FontFamily
+            x:Key="AxiomUiFont">
+			Inter, Segoe UI, DejaVu Sans
+		</FontFamily>
+
+		<x:Double
+            x:Key="AxiomUiFontSize">
+			14
+		</x:Double>
+
+		<FontFamily
+            x:Key="AxiomEditorFont">
+			JetBrains Mono, Cascadia Mono, DejaVu Sans Mono
+		</FontFamily>
+
+		<x:Double
+            x:Key="AxiomEditorFontSize">
+			14
+		</x:Double>
+
+	</Application.Resources>
 
 </Application>

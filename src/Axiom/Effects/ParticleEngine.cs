@@ -1,7 +1,9 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using System.Text.Json;
 
 namespace Axiom.Effects;
 
@@ -9,11 +11,19 @@ internal sealed class ParticleEngine
 {
     private readonly Canvas _canvas;
 
-    private readonly List<Particle> _particles = [];
+    private readonly List<Particle> _particles =
+        [];
 
-    private readonly Random _random = new();
+    private readonly Random _random =
+        new();
 
     private readonly DispatcherTimer _timer;
+
+    private readonly EffectTextureService _textures =
+        new();
+
+    private readonly CustomEffectsManager _customEffects =
+        new();
 
     private DateTime _lastFrame =
         DateTime.UtcNow;
@@ -27,18 +37,20 @@ internal sealed class ParticleEngine
     {
         _canvas = canvas;
 
-        _timer = new DispatcherTimer
-        {
-            Interval =
-                TimeSpan.FromMilliseconds(16)
-        };
+        _timer =
+            new DispatcherTimer
+            {
+                Interval =
+                    TimeSpan.FromMilliseconds(16)
+            };
 
         _timer.Tick += Tick;
     }
 
     public void Start()
     {
-        _lastFrame = DateTime.UtcNow;
+        _lastFrame =
+            DateTime.UtcNow;
 
         _timer.Start();
     }
@@ -46,14 +58,16 @@ internal sealed class ParticleEngine
     public void Stop()
     {
         _timer.Stop();
-
         Clear();
     }
 
     public void Clear()
     {
         foreach (var particle in _particles)
-            _canvas.Children.Remove(particle.Control);
+        {
+            _canvas.Children.Remove(
+                particle.Control);
+        }
 
         _particles.Clear();
     }
@@ -68,15 +82,7 @@ internal sealed class ParticleEngine
              _particles.Count < Settings.MaxParticles;
              i++)
         {
-            var kind =
-                GetRandomEnabledKind();
-
-            if (kind is null)
-                return;
-
-            Spawn(
-                kind.Value,
-                true);
+            SpawnRandom(true);
         }
     }
 
@@ -94,7 +100,8 @@ internal sealed class ParticleEngine
                 0,
                 0.05);
 
-        _lastFrame = now;
+        _lastFrame =
+            now;
 
         if (!Settings.Enabled)
         {
@@ -103,12 +110,10 @@ internal sealed class ParticleEngine
         }
 
         SpawnParticles(delta);
-
         UpdateParticles(delta);
     }
 
-    private void SpawnParticles(
-        double delta)
+    private void SpawnParticles(double delta)
     {
         if (_canvas.Bounds.Width <= 0 ||
             _canvas.Bounds.Height <= 0)
@@ -118,7 +123,9 @@ internal sealed class ParticleEngine
 
         _spawnAccumulator +=
             delta *
-            Settings.Density;
+            Math.Max(
+                1,
+                Settings.Density);
 
         while (_spawnAccumulator >= 1)
         {
@@ -130,19 +137,52 @@ internal sealed class ParticleEngine
                 break;
             }
 
-            var kind =
-                GetRandomEnabledKind();
-
-            if (kind is null)
-                break;
-
-            Spawn(
-                kind.Value,
-                false);
+            SpawnRandom(false);
         }
     }
 
-    private ParticleKind? GetRandomEnabledKind()
+    private void SpawnRandom(bool randomY)
+    {
+        var kinds =
+            GetEnabledKinds();
+
+        var custom =
+            _customEffects
+                .GetInstalled()
+                .Where(_customEffects.IsEnabled)
+                .ToList();
+
+        if (custom.Count > 0)
+            kinds.Add(ParticleKind.Custom);
+
+        if (kinds.Count == 0)
+            return;
+
+        var kind =
+            kinds[
+                _random.Next(
+                    kinds.Count)];
+
+        if (kind == ParticleKind.Custom)
+        {
+            var effect =
+                custom[
+                    _random.Next(
+                        custom.Count)];
+
+            SpawnCustom(
+                effect,
+                randomY);
+
+            return;
+        }
+
+        SpawnBuiltIn(
+            kind,
+            randomY);
+    }
+
+    private List<ParticleKind> GetEnabledKinds()
     {
         var kinds =
             new List<ParticleKind>();
@@ -156,66 +196,323 @@ internal sealed class ParticleEngine
         if (Settings.SnowEnabled)
             kinds.Add(ParticleKind.Snow);
 
-        if (Settings.RainEnabled)
-        {
-            kinds.Add(ParticleKind.Rain);
-            kinds.Add(ParticleKind.Rain);
-            kinds.Add(ParticleKind.Rain);
-        }
+        if (Settings.StarsEnabled)
+            kinds.Add(ParticleKind.Star);
 
         if (Settings.FirefliesEnabled)
             kinds.Add(ParticleKind.Firefly);
 
-        if (Settings.StarsEnabled)
-            kinds.Add(ParticleKind.Star);
+        if (Settings.RainEnabled)
+        {
+            kinds.Add(ParticleKind.Rain);
+            kinds.Add(ParticleKind.Rain);
+        }
 
-        if (kinds.Count == 0)
-            return null;
+        if (Settings.HeartsEnabled)
+            kinds.Add(ParticleKind.Heart);
 
-        return kinds[
-            _random.Next(kinds.Count)];
+        if (Settings.ButterfliesEnabled)
+            kinds.Add(ParticleKind.Butterfly);
+
+        if (Settings.FeathersEnabled)
+            kinds.Add(ParticleKind.Feather);
+
+        return kinds;
     }
 
-    private void Spawn(
+    private void SpawnBuiltIn(
         ParticleKind kind,
         bool randomY)
     {
-        var width =
+        var asset =
+            PickAsset(kind);
+
+        var bitmap =
+            _textures.LoadBuiltIn(asset);
+
+        if (bitmap is null)
+            return;
+
+        var profile =
+            GetMotionProfile(kind);
+
+        SpawnImage(
+            bitmap,
+            kind,
+            randomY,
+            profile);
+    }
+
+    private string PickAsset(ParticleKind kind)
+    {
+        return kind switch
+        {
+            ParticleKind.Petal =>
+                $"Petals/petal_{_random.Next(1, 5):00}.png",
+
+            ParticleKind.Leaf =>
+                $"Leaves/leaf_{_random.Next(1, 3):00}.png",
+
+            ParticleKind.Snow =>
+                $"Snow/snow_{_random.Next(1, 3):00}.png",
+
+            ParticleKind.Star =>
+                $"Stars/star_{_random.Next(1, 3):00}.png",
+
+            ParticleKind.Firefly =>
+                "Fireflies/firefly_01.png",
+
+            ParticleKind.Rain =>
+                "Rain/rain_01.png",
+
+            ParticleKind.Heart =>
+                "Hearts/heart_01.png",
+
+            ParticleKind.Butterfly =>
+                "Butterflies/butterfly_01.png",
+
+            ParticleKind.Feather =>
+                "Feathers/feather_01.png",
+
+            _ =>
+                "Stars/star_01.png"
+        };
+    }
+
+    private ParticleMotionProfile GetMotionProfile(
+        ParticleKind kind)
+    {
+        return kind switch
+        {
+            ParticleKind.Petal =>
+                new(
+                    RandomRange(18, 38),
+                    18,
+                    1.3,
+                    true,
+                    false),
+
+            ParticleKind.Leaf =>
+                new(
+                    RandomRange(28, 55),
+                    25,
+                    1.1,
+                    true,
+                    false),
+
+            ParticleKind.Snow =>
+                new(
+                    RandomRange(8, 22),
+                    12,
+                    0.55,
+                    true,
+                    false),
+
+            ParticleKind.Rain =>
+                new(
+                    RandomRange(230, 350),
+                    0,
+                    0,
+                    false,
+                    false),
+
+            ParticleKind.Firefly =>
+                new(
+                    RandomRange(-4, 5),
+                    26,
+                    1.8,
+                    false,
+                    true),
+
+            ParticleKind.Star =>
+                new(
+                    RandomRange(3, 10),
+                    8,
+                    0.5,
+                    false,
+                    true),
+
+            ParticleKind.Heart =>
+                new(
+                    RandomRange(15, 30),
+                    12,
+                    0.7,
+                    true,
+                    false),
+
+            ParticleKind.Butterfly =>
+                new(
+                    RandomRange(8, 20),
+                    34,
+                    2.2,
+                    false,
+                    false),
+
+            ParticleKind.Feather =>
+                new(
+                    RandomRange(13, 27),
+                    25,
+                    0.8,
+                    true,
+                    false),
+
+            _ =>
+                new(
+                    25,
+                    12,
+                    1,
+                    true,
+                    false)
+        };
+    }
+
+    private void SpawnCustom(
+        InstalledEffect installed,
+        bool randomY)
+    {
+        CustomEffectDefinition? definition;
+
+        try
+        {
+            var json =
+                File.ReadAllText(
+                    installed.DefinitionPath);
+
+            definition =
+                JsonSerializer
+                    .Deserialize<CustomEffectDefinition>(
+                        json);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (definition is null ||
+            string.IsNullOrWhiteSpace(
+                definition.Texture))
+        {
+            return;
+        }
+
+        var bitmap =
+            _textures.LoadImported(
+                installed.Directory,
+                definition.Texture);
+
+        if (bitmap is null)
+            return;
+
+        var minSize =
+            Math.Clamp(
+                definition.Particle.SizeMin,
+                2,
+                128);
+
+        var maxSize =
+            Math.Clamp(
+                definition.Particle.SizeMax,
+                minSize,
+                128);
+
+        var profile =
+            new ParticleMotionProfile(
+                RandomRange(
+                    definition.Motion.SpeedMin,
+                    definition.Motion.SpeedMax),
+
+                Math.Clamp(
+                    definition.Motion.Drift,
+                    0,
+                    100),
+
+                1,
+                definition.Particle.Rotation,
+                false);
+
+        SpawnImage(
+            bitmap,
+            ParticleKind.Custom,
+            randomY,
+            profile,
+
+            RandomRange(
+                minSize,
+                maxSize),
+
+            Math.Clamp(
+                definition.Particle.Opacity,
+                0.05,
+                1),
+
+            Math.Clamp(
+                definition.Particle.Lifetime,
+                0.5,
+                60),
+
+            Math.Clamp(
+                definition.Motion.Wind,
+                -100,
+                100));
+    }
+
+    private void SpawnImage(
+        Bitmap bitmap,
+        ParticleKind kind,
+        bool randomY,
+        ParticleMotionProfile profile,
+        double? customSize = null,
+        double? customOpacity = null,
+        double? customLifetime = null,
+        double? customWind = null)
+    {
+        var canvasWidth =
             Math.Max(
                 _canvas.Bounds.Width,
                 1);
 
-        var height =
+        var canvasHeight =
             Math.Max(
                 _canvas.Bounds.Height,
                 1);
 
         var size =
+            customSize ??
             Settings.Size *
             RandomRange(
                 0.65,
-                1.35);
+                1.3);
 
-        var text =
-            new TextBlock
+        if (kind == ParticleKind.Rain)
+            size *= 1.35;
+
+        var image =
+            new Image
             {
-                Text =
-                    GetGlyph(kind),
+                Source = bitmap,
 
-                FontSize =
-                    size,
+                Width =
+                    kind == ParticleKind.Rain
+                        ? Math.Max(4, size * 0.25)
+                        : size,
+
+                Height =
+                    kind == ParticleKind.Rain
+                        ? Math.Max(18, size * 1.8)
+                        : size,
+
+                Stretch =
+                    Stretch.Uniform,
 
                 Opacity =
+                    customOpacity ??
                     Math.Clamp(
                         Settings.Opacity *
                         RandomRange(
-                            0.7,
+                            0.75,
                             1),
                         0.05,
                         1),
-
-                Foreground =
-                    GetBrush(kind),
 
                 IsHitTestVisible =
                     false,
@@ -230,44 +527,49 @@ internal sealed class ParticleEngine
         var rotation =
             new RotateTransform();
 
-        text.RenderTransform =
+        image.RenderTransform =
             rotation;
 
         var x =
             RandomRange(
-                -20,
-                width + 20);
+                -30,
+                canvasWidth + 30);
 
         var y =
             randomY
                 ? RandomRange(
-                    -20,
-                    height)
+                    -30,
+                    canvasHeight)
                 : RandomRange(
-                    -80,
-                    -10);
-
-        var speed =
-            GetSpeed(kind) *
-            Settings.Speed;
+                    -100,
+                    -15);
 
         var particle =
             new Particle
             {
-                Control = text,
+                Control =
+                    image,
 
-                Kind = kind,
+                Kind =
+                    kind,
 
-                X = x,
-                Y = y,
+                X =
+                    x,
+
+                Y =
+                    y,
 
                 VelocityX =
                     RandomRange(
-                        -6,
-                        6),
+                        -5,
+                        5)
+                    +
+                    (customWind ??
+                     Settings.Wind * 22),
 
                 VelocityY =
-                    speed,
+                    profile.VerticalSpeed *
+                    Settings.Speed,
 
                 Rotation =
                     RandomRange(
@@ -275,11 +577,11 @@ internal sealed class ParticleEngine
                         360),
 
                 RotationSpeed =
-                    kind == ParticleKind.Rain
-                        ? 0
-                        : RandomRange(
-                            -60,
-                            60),
+                    profile.Rotate
+                        ? RandomRange(
+                            -55,
+                            55)
+                        : 0,
 
                 DriftPhase =
                     RandomRange(
@@ -287,34 +589,43 @@ internal sealed class ParticleEngine
                         Math.PI * 2),
 
                 DriftSpeed =
-                    RandomRange(
-                        0.5,
-                        2),
+                    profile.DriftSpeed,
+
+                DriftAmount =
+                    profile.DriftAmount,
 
                 Lifetime =
+                    customLifetime ??
                     RandomRange(
-                        7,
-                        18)
+                        8,
+                        18),
+
+                BaseOpacity =
+                    image.Opacity,
+
+                Pulse =
+                    profile.Pulse
             };
 
         rotation.Angle =
             particle.Rotation;
 
         Canvas.SetLeft(
-            text,
-            particle.X);
+            image,
+            x);
 
         Canvas.SetTop(
-            text,
-            particle.Y);
+            image,
+            y);
 
-        _canvas.Children.Add(text);
+        _canvas.Children.Add(
+            image);
 
-        _particles.Add(particle);
+        _particles.Add(
+            particle);
     }
 
-    private void UpdateParticles(
-        double delta)
+    private void UpdateParticles(double delta)
     {
         var width =
             _canvas.Bounds.Width;
@@ -327,232 +638,144 @@ internal sealed class ParticleEngine
              i >= 0;
              i--)
         {
-            var p =
+            var particle =
                 _particles[i];
 
-            p.Age += delta;
+            particle.Age +=
+                delta;
 
-            p.DriftPhase +=
+            particle.DriftPhase +=
                 delta *
-                p.DriftSpeed;
+                particle.DriftSpeed;
 
             var drift =
                 Math.Sin(
-                    p.DriftPhase) *
-                GetDrift(p.Kind);
+                    particle.DriftPhase) *
+                particle.DriftAmount;
 
-            var wind =
-                Settings.Wind * 28;
+            if (particle.Kind ==
+                ParticleKind.Firefly)
+            {
+                particle.X +=
+                    (
+                        particle.VelocityX +
+                        drift
+                    ) *
+                    delta;
 
-            p.X +=
-                (
-                    p.VelocityX +
-                    drift +
-                    wind
-                ) * delta;
+                particle.Y +=
+                    (
+                        particle.VelocityY +
+                        Math.Cos(
+                            particle.DriftPhase) *
+                        particle.DriftAmount
+                    ) *
+                    delta;
+            }
+            else if (particle.Kind ==
+                     ParticleKind.Butterfly)
+            {
+                particle.X +=
+                    (
+                        particle.VelocityX +
+                        drift * 1.3
+                    ) *
+                    delta;
 
-            p.Y +=
-                p.VelocityY *
-                delta;
+                particle.Y +=
+                    (
+                        particle.VelocityY +
+                        Math.Sin(
+                            particle.DriftPhase * 2)
+                        * 12
+                    ) *
+                    delta;
+            }
+            else
+            {
+                particle.X +=
+                    (
+                        particle.VelocityX +
+                        drift
+                    ) *
+                    delta;
 
-            p.Rotation +=
-                p.RotationSpeed *
+                particle.Y +=
+                    particle.VelocityY *
+                    delta;
+            }
+
+            particle.Rotation +=
+                particle.RotationSpeed *
                 delta;
 
             Canvas.SetLeft(
-                p.Control,
-                p.X);
+                particle.Control,
+                particle.X);
 
             Canvas.SetTop(
-                p.Control,
-                p.Y);
+                particle.Control,
+                particle.Y);
 
-            if (p.Control.RenderTransform
-                is RotateTransform rotation)
+            if (particle.Control.RenderTransform
+                is RotateTransform transform)
             {
-                rotation.Angle =
-                    p.Rotation;
+                transform.Angle =
+                    particle.Rotation;
             }
 
-            if (p.Kind ==
-                ParticleKind.Firefly)
+            if (particle.Pulse)
             {
-                p.Control.Opacity =
+                particle.Control.Opacity =
                     Math.Clamp(
-                        0.35 +
-                        Math.Sin(
-                            p.DriftPhase * 2) *
-                        0.3,
-                        0.1,
-                        Settings.Opacity);
+                        particle.BaseOpacity *
+                        (
+                            0.65 +
+                            Math.Sin(
+                                particle.DriftPhase * 2)
+                            * 0.35
+                        ),
+                        0.08,
+                        1);
             }
 
             var remove =
-                p.Age > p.Lifetime ||
-                p.Y > height + 80 ||
-                p.X < -120 ||
-                p.X > width + 120;
+                particle.Age >
+                    particle.Lifetime ||
+                particle.Y >
+                    height + 120 ||
+                particle.X <
+                    -180 ||
+                particle.X >
+                    width + 180;
 
             if (!remove)
                 continue;
 
             _canvas.Children.Remove(
-                p.Control);
+                particle.Control);
 
             _particles.RemoveAt(i);
         }
-    }
-
-    private string GetGlyph(
-        ParticleKind kind)
-    {
-        return kind switch
-        {
-            ParticleKind.Petal =>
-                _random.Next(2) == 0
-                    ? "❀"
-                    : "✿",
-
-            ParticleKind.Leaf =>
-                _random.Next(2) == 0
-                    ? "❧"
-                    : "❦",
-
-            ParticleKind.Snow =>
-                "❄",
-
-            ParticleKind.Rain =>
-                "│",
-
-            ParticleKind.Firefly =>
-                "•",
-
-            ParticleKind.Star =>
-                _random.Next(2) == 0
-                    ? "✦"
-                    : "✧",
-
-            _ =>
-                "•"
-        };
-    }
-
-    private IBrush GetBrush(
-        ParticleKind kind)
-    {
-        var color =
-            kind switch
-            {
-                ParticleKind.Petal =>
-                    Pick(
-                        "#F7A8C4",
-                        "#E88DB3",
-                        "#FFD0DF",
-                        "#D77BA5"),
-
-                ParticleKind.Leaf =>
-                    Pick(
-                        "#C68B59",
-                        "#DDA15E",
-                        "#BC6C25",
-                        "#8A9A5B"),
-
-                ParticleKind.Snow =>
-                    Pick(
-                        "#FFFFFF",
-                        "#DCEBFF",
-                        "#EEF6FF"),
-
-                ParticleKind.Rain =>
-                    Pick(
-                        "#7EA7D8",
-                        "#6F95C5",
-                        "#A0BDE0"),
-
-                ParticleKind.Firefly =>
-                    Pick(
-                        "#FFF59D",
-                        "#F9F871",
-                        "#FFE66D"),
-
-                ParticleKind.Star =>
-                    Pick(
-                        "#FFFFFF",
-                        "#EADFFF",
-                        "#FFDCF1"),
-
-                _ =>
-                    "#FFFFFF"
-            };
-
-        return new SolidColorBrush(
-            Color.Parse(color));
-    }
-
-    private double GetSpeed(
-        ParticleKind kind)
-    {
-        return kind switch
-        {
-            ParticleKind.Petal =>
-                RandomRange(22, 45),
-
-            ParticleKind.Leaf =>
-                RandomRange(28, 55),
-
-            ParticleKind.Snow =>
-                RandomRange(12, 30),
-
-            ParticleKind.Rain =>
-                RandomRange(180, 300),
-
-            ParticleKind.Firefly =>
-                RandomRange(3, 10),
-
-            ParticleKind.Star =>
-                RandomRange(5, 15),
-
-            _ =>
-                30
-        };
-    }
-
-    private double GetDrift(
-        ParticleKind kind)
-    {
-        return kind switch
-        {
-            ParticleKind.Rain =>
-                0,
-
-            ParticleKind.Snow =>
-                12,
-
-            ParticleKind.Firefly =>
-                22,
-
-            ParticleKind.Star =>
-                8,
-
-            _ =>
-                16
-        };
-    }
-
-    private string Pick(
-        params string[] values)
-    {
-        return values[
-            _random.Next(
-                values.Length)];
     }
 
     private double RandomRange(
         double min,
         double max)
     {
+        if (max < min)
+            (min, max) =
+                (max, min);
+
         return min +
                _random.NextDouble() *
                (max - min);
     }
+
+    private readonly record struct ParticleMotionProfile(
+        double VerticalSpeed,
+        double DriftAmount,
+        double DriftSpeed,
+        bool Rotate,
+        bool Pulse);
 }
