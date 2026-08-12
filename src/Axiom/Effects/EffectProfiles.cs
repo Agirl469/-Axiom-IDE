@@ -4,6 +4,7 @@ public static class EffectProfiles
 {
     public static IReadOnlyList<string> Names { get; } =
     [
+        "Off",
         "Minimal",
         "Sakura",
         "Snowy",
@@ -21,6 +22,13 @@ public static class EffectProfiles
 
         switch (profile)
         {
+            case "Off":
+                Clear(settings);
+                settings.Enabled = false;
+                settings.NyanCatEnabled = false;
+                settings.Profile = "Off";
+                break;
+
             case "Minimal":
                 Clear(settings);
 

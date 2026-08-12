@@ -18,9 +18,7 @@ public sealed class ProcessService
         {
             FileName = fileName,
             Arguments = arguments,
-            WorkingDirectory =
-                workingDirectory ?? Environment.CurrentDirectory,
-
+            WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -39,9 +37,7 @@ public sealed class ProcessService
                 return;
 
             lock (output)
-            {
                 output.AppendLine(e.Data);
-            }
 
             outputReceived?.Invoke(e.Data);
         };
@@ -52,9 +48,7 @@ public sealed class ProcessService
                 return;
 
             lock (output)
-            {
                 output.AppendLine(e.Data);
-            }
 
             outputReceived?.Invoke(e.Data);
         };
@@ -62,21 +56,14 @@ public sealed class ProcessService
         try
         {
             if (!process.Start())
-            {
-                return new ProcessResult(
-                    -1,
-                    "Process could not be started.");
-            }
+                return new ProcessResult(-1, "Process could not be started.");
 
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(
-                cancellationToken);
+            await process.WaitForExitAsync(cancellationToken);
 
-            return new ProcessResult(
-                process.ExitCode,
-                output.ToString());
+            return new ProcessResult(process.ExitCode, output.ToString());
         }
         catch (OperationCanceledException)
         {
@@ -89,56 +76,40 @@ public sealed class ProcessService
             {
             }
 
-            return new ProcessResult(
-                -1,
-                "Process stopped.");
+            return new ProcessResult(-1, "Process stopped.");
         }
         catch (Exception ex)
         {
-            return new ProcessResult(
-                -1,
-                ex.Message);
+            return new ProcessResult(-1, ex.Message);
         }
     }
 
-    public bool TryStartTerminal(
-        string workingDirectory)
+    public bool TryStartTerminal(string workingDirectory)
     {
         try
         {
             if (OperatingSystem.IsWindows())
             {
-                Process.Start(
-                    new ProcessStartInfo
-                    {
-                        FileName = "powershell.exe",
-                        WorkingDirectory = workingDirectory,
-                        UseShellExecute = true
-                    });
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = true
+                });
 
                 return true;
             }
 
-            var terminals = new[]
-            {
-                "kitty",
-                "konsole",
-                "gnome-terminal",
-                "xfce4-terminal",
-                "x-terminal-emulator"
-            };
-
-            foreach (var terminal in terminals)
+            foreach (var terminal in GetLinuxTerminals())
             {
                 try
                 {
-                    Process.Start(
-                        new ProcessStartInfo
-                        {
-                            FileName = terminal,
-                            WorkingDirectory = workingDirectory,
-                            UseShellExecute = false
-                        });
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = terminal,
+                        WorkingDirectory = workingDirectory,
+                        UseShellExecute = false
+                    });
 
                     return true;
                 }
@@ -154,6 +125,88 @@ public sealed class ProcessService
             return false;
         }
     }
+
+    public bool TryRunCommandInTerminal(
+        string command,
+        string? workingDirectory = null)
+    {
+        workingDirectory ??= Environment.CurrentDirectory;
+
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoExit -Command \"{EscapePowerShell(command)}\"",
+                    WorkingDirectory = workingDirectory,
+                    UseShellExecute = true
+                });
+
+                return true;
+            }
+
+            var shellCommand =
+                $"cd {QuoteShell(workingDirectory)} && {command}; " +
+                "printf '\\nPress Enter to close...'; read _";
+
+            var terminalCommands = new (string FileName, string Arguments)[]
+            {
+                ("kitty", $"sh -lc {QuoteArgument(shellCommand)}"),
+                ("konsole", $"-e sh -lc {QuoteArgument(shellCommand)}"),
+                ("gnome-terminal", $"-- sh -lc {QuoteArgument(shellCommand)}"),
+                ("xfce4-terminal", $"--command=\"sh -lc {EscapeDoubleQuoted(QuoteArgument(shellCommand))}\""),
+                ("x-terminal-emulator", $"-e sh -lc {QuoteArgument(shellCommand)}")
+            };
+
+            foreach (var terminal in terminalCommands)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = terminal.FileName,
+                        Arguments = terminal.Arguments,
+                        WorkingDirectory = workingDirectory,
+                        UseShellExecute = false
+                    });
+
+                    return true;
+                }
+                catch
+                {
+                }
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string[] GetLinuxTerminals() =>
+    [
+        "kitty",
+        "konsole",
+        "gnome-terminal",
+        "xfce4-terminal",
+        "x-terminal-emulator"
+    ];
+
+    private static string EscapePowerShell(string value) =>
+        value.Replace("`", "``").Replace("\"", "`\"");
+
+    private static string QuoteShell(string value) =>
+        "'" + value.Replace("'", "'\\''") + "'";
+
+    private static string QuoteArgument(string value) =>
+        "'" + value.Replace("'", "'\\''") + "'";
+
+    private static string EscapeDoubleQuoted(string value) =>
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 }
 
 public sealed record ProcessResult(

@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using AvaloniaEdit;
 using Axiom.Build;
 using Axiom.Editor;
 using Axiom.Models;
@@ -32,7 +33,7 @@ public partial class EditorView : UserControl
     private readonly TreeView _projectTree;
     private readonly TextBlock _projectKindText;
     private readonly StackPanel _tabBar;
-    private readonly TextBox _editorBox;
+    private readonly TextEditor _editorBox;
     private CancellationTokenSource? _sessionSaveDelay;
     private bool _restoringSession;
     private readonly TextBox _outputBox;
@@ -71,7 +72,7 @@ public partial class EditorView : UserControl
                 "TabBar was not found.");
 
         _editorBox =
-            this.FindControl<TextBox>("EditorBox")
+            this.FindControl<TextEditor>("EditorBox")
             ?? throw new InvalidOperationException(
                 "EditorBox was not found.");
 
@@ -412,22 +413,19 @@ public partial class EditorView : UserControl
 
         _findBar.IsVisible = true;
 
-        if (_editorBox.SelectionStart !=
-            _editorBox.SelectionEnd)
+        if (_editorBox.SelectionLength > 0)
         {
             var text =
                 _editorBox.Text
                 ?? string.Empty;
 
             var start =
-                Math.Min(
-                    _editorBox.SelectionStart,
-                    _editorBox.SelectionEnd);
+                _editorBox.SelectionStart;
 
             var end =
-                Math.Max(
-                    _editorBox.SelectionStart,
-                    _editorBox.SelectionEnd);
+                Math.Min(
+                    start + _editorBox.SelectionLength,
+                    text.Length);
 
             _findBox.Text =
                 text[start..end];
@@ -574,13 +572,11 @@ public partial class EditorView : UserControl
             _findBox.Text?.Length
             ?? 0;
 
-        _editorBox.SelectionStart =
-            start;
+        _editorBox.Select(
+            start,
+            length);
 
-        _editorBox.SelectionEnd =
-            start + length;
-
-        _editorBox.CaretIndex =
+        _editorBox.CaretOffset =
             start + length;
 
         _findCountText.Text =
@@ -608,8 +604,8 @@ public partial class EditorView : UserControl
     }
 
     private void FindBox_TextChanged(
-    object? sender,
-    TextChangedEventArgs e)
+     object? sender,
+     TextChangedEventArgs e)
     {
         RefreshFileMatches();
     }
@@ -713,15 +709,18 @@ public partial class EditorView : UserControl
         if (length > 0)
         {
             var start =
-                _editorBox.CaretIndex;
+                _editorBox.CaretOffset;
 
-            _editorBox.SelectionStart =
-                start;
+            var selectionLength =
+                Math.Max(
+                    0,
+                    Math.Min(
+                        length,
+                        (_editorBox.Text?.Length ?? 0) - start));
 
-            _editorBox.SelectionEnd =
-                Math.Min(
-                    start + length,
-                    _editorBox.Text?.Length ?? 0);
+            _editorBox.Select(
+                start,
+                selectionLength);
         }
     }
 
@@ -1250,7 +1249,11 @@ public partial class EditorView : UserControl
         _editorBox.Text =
             tab.Text;
 
-        _editorBox.CaretIndex =
+        _editorBox.SyntaxHighlighting =
+            SyntaxHighlightingService.GetForFile(
+                tab.FilePath);
+
+        _editorBox.CaretOffset =
             Math.Clamp(
                 tab.CaretIndex,
                 0,
@@ -1274,7 +1277,7 @@ public partial class EditorView : UserControl
             ?? string.Empty;
 
         _activeTab.CaretIndex =
-            _editorBox.CaretIndex;
+            _editorBox.CaretOffset;
     }
 
     private void RefreshTabBar()
@@ -1449,7 +1452,7 @@ public partial class EditorView : UserControl
 
     private void EditorBox_TextChanged(
         object? sender,
-        TextChangedEventArgs e)
+        EventArgs e)
     {
         if (_loadingEditorText ||
             _activeTab is null)
@@ -1649,7 +1652,7 @@ public partial class EditorView : UserControl
             ?? string.Empty;
 
         var caret =
-            _editorBox.CaretIndex;
+            _editorBox.CaretOffset;
 
         var searchIndex =
             Math.Max(
@@ -1690,14 +1693,12 @@ public partial class EditorView : UserControl
             ?? string.Empty;
 
         var start =
-            Math.Min(
-                _editorBox.SelectionStart,
-                _editorBox.SelectionEnd);
+            _editorBox.SelectionStart;
 
         var end =
-            Math.Max(
-                _editorBox.SelectionStart,
-                _editorBox.SelectionEnd);
+            Math.Min(
+                start + _editorBox.SelectionLength,
+                text.Length);
 
         var newText =
             text[..start] +
@@ -1707,7 +1708,7 @@ public partial class EditorView : UserControl
         _editorBox.Text =
             newText;
 
-        _editorBox.CaretIndex =
+        _editorBox.CaretOffset =
             start + value.Length;
     }
 
@@ -1718,7 +1719,7 @@ public partial class EditorView : UserControl
             ?? string.Empty;
 
         var caret =
-            _editorBox.CaretIndex;
+            _editorBox.CaretOffset;
 
         if (caret == 0)
             return;
@@ -1753,7 +1754,7 @@ public partial class EditorView : UserControl
                 lineStart,
                 removeCount);
 
-        _editorBox.CaretIndex =
+        _editorBox.CaretOffset =
             Math.Max(
                 lineStart,
                 caret - removeCount);
@@ -1773,7 +1774,7 @@ public partial class EditorView : UserControl
         await RunProjectAsync();
     }
 
- 
+
 
     private void Terminal_Click(
         object? sender,
@@ -2245,14 +2246,12 @@ public partial class EditorView : UserControl
                 0,
                 text.Length);
 
-        _editorBox.CaretIndex =
+        _editorBox.CaretOffset =
             index;
 
-        _editorBox.SelectionStart =
-            index;
-
-        _editorBox.SelectionEnd =
-            index;
+        _editorBox.Select(
+            index,
+            0);
 
         _editorBox.Focus();
     }

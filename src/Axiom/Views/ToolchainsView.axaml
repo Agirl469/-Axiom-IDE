@@ -3,42 +3,53 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     x:Class="Axiom.Views.ToolchainsView">
 
-	<Grid RowDefinitions="Auto,Auto,*"
-          Margin="24">
+	<Grid RowDefinitions="Auto,Auto,Auto,*" Margin="24">
+		<Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,18">
+			<StackPanel Spacing="4">
+				<TextBlock Text="Toolchains" FontSize="24" FontWeight="SemiBold" />
+				<TextBlock x:Name="PlatformText" Text="Checking platform..." Classes="muted" />
+			</StackPanel>
 
-		<TextBlock
-            Grid.Row="0"
-            Text="Toolchains"
-            FontSize="24"
-            FontWeight="SemiBold"
-            Margin="0,0,0,8" />
+			<Button Grid.Column="1"
+                    Content="Rescan"
+                    Padding="14,7"
+                    VerticalAlignment="Center"
+                    Click="Scan_Click" />
+		</Grid>
 
-		<StackPanel
-            Grid.Row="1"
-            Orientation="Horizontal"
-            Spacing="12"
-            Margin="0,0,0,18">
+		<Border Grid.Row="1"
+                Classes="panel"
+                Padding="16"
+                Margin="0,0,0,16">
+			<StackPanel Spacing="12">
+				<StackPanel Spacing="3">
+					<TextBlock Text="Quick setup" FontSize="17" FontWeight="SemiBold" />
+					<TextBlock Text="Choose what you want to develop. Axiom installs the tools that are missing."
+                               Classes="muted"
+                               TextWrapping="Wrap" />
+				</StackPanel>
 
-			<TextBlock
-                x:Name="PlatformText"
-                VerticalAlignment="Center"
-                Text="Platform" />
+				<WrapPanel x:Name="BundleList" Orientation="Horizontal" />
+			</StackPanel>
+		</Border>
 
-			<Button
-                Content="Scan"
-                Click="Scan_Click" />
-		</StackPanel>
+		<Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+			<StackPanel Orientation="Horizontal" Spacing="4">
+				<Button Content="All" Padding="12,6" Click="All_Click" />
+				<Button Content="Installed" Padding="12,6" Click="Installed_Click" />
+				<Button Content="Missing" Padding="12,6" Click="Missing_Click" />
+				<Button Content="Compilers" Padding="12,6" Click="Compilers_Click" />
+				<Button Content="Build tools" Padding="12,6" Click="BuildTools_Click" />
+			</StackPanel>
 
-		<ScrollViewer
-            Grid.Row="2"
-            VerticalScrollBarVisibility="Auto">
+			<TextBlock x:Name="SummaryText"
+                       Grid.Column="1"
+                       VerticalAlignment="Center"
+                       Classes="muted" />
+		</Grid>
 
-			<StackPanel
-                x:Name="ToolchainList"
-                Spacing="8" />
-
+		<ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+			<StackPanel x:Name="ToolchainList" Spacing="8" />
 		</ScrollViewer>
-
 	</Grid>
-
 </UserControl>

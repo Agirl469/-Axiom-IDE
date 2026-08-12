@@ -1,13 +1,13 @@
 <UserControl
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:edit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
     x:Class="Axiom.Views.EditorView">
 
 	<Grid
-        RowDefinitions="Auto,*,220"
+        RowDefinitions="Auto,*,180"
         ColumnDefinitions="240,*"
         Background="{DynamicResource AxiomBackground}">
-
 
 		<!-- TOP BAR -->
 		<Border
@@ -21,35 +21,46 @@
                 ColumnDefinitions="*,Auto"
                 Margin="10,6">
 
-				<TextBlock
-                    Text="Axiom"
-                    FontSize="13"
-                    FontWeight="SemiBold"
-                    VerticalAlignment="Center" />
 				<StackPanel
-					Grid.Column="1"
-					Orientation="Horizontal"
-					Spacing="4">
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    VerticalAlignment="Center">
+
+					<TextBlock
+                        Text="Axiom"
+                        FontSize="13"
+                        FontWeight="SemiBold" />
+
+					<TextBlock
+                        Text="•"
+                        Classes="muted" />
+
+					<TextBlock
+                        x:Name="ProjectKindText"
+                        Text="Project"
+                        FontSize="12"
+                        Classes="muted" />
+
+				</StackPanel>
+
+				<StackPanel
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="4">
 
 					<Button
-						Classes="ghost"
-						Content="Build"
-						ToolTip.Tip="Build project"
-						Click="Build_Click" />
+                        Content="Build"
+                        Click="Build_Click" />
 
 					<Button
-						Classes="primary"
-						Content="▶ Run"
-						ToolTip.Tip="Run project"
-						Click="Run_Click" />
+                        Content="▶ Run"
+                        Click="Run_Click" />
 
 					<Button
-						Classes="ghost danger"
-						Content="■"
-						Width="32"
-						Padding="0"
-						ToolTip.Tip="Stop"
-						Click="Stop_Click" />
+                        Content="■"
+                        Width="34"
+                        Padding="0"
+                        Click="Stop_Click" />
 
 				</StackPanel>
 
@@ -58,7 +69,7 @@
 		</Border>
 
 
-		<!-- PROJECT EXPLORER -->
+		<!-- PROJECT -->
 		<Border
             Grid.Row="1"
             Grid.Column="0"
@@ -68,9 +79,7 @@
 
 			<Grid RowDefinitions="Auto,*">
 
-				<!-- Explorer header -->
 				<Grid
-                    Grid.Row="0"
                     ColumnDefinitions="*,Auto,Auto,Auto"
                     Margin="10,7">
 
@@ -78,14 +87,13 @@
                         Text="PROJECT"
                         FontSize="11"
                         FontWeight="SemiBold"
-                        VerticalAlignment="Center"
-                        Classes="muted" />
+                        Classes="muted"
+                        VerticalAlignment="Center" />
 
 					<Button
                         Grid.Column="1"
                         Content="+"
                         Width="30"
-                        Height="28"
                         Padding="0"
                         ToolTip.Tip="New file"
                         Click="NewFile_Click" />
@@ -94,7 +102,6 @@
                         Grid.Column="2"
                         Content="▾"
                         Width="30"
-                        Height="28"
                         Padding="0"
                         Margin="3,0,0,0"
                         ToolTip.Tip="New folder"
@@ -104,25 +111,21 @@
                         Grid.Column="3"
                         Content="↻"
                         Width="30"
-                        Height="28"
                         Padding="0"
                         Margin="3,0,0,0"
-                        ToolTip.Tip="Refresh project"
+                        ToolTip.Tip="Refresh"
                         Click="RefreshTree_Click" />
 
 				</Grid>
 
-
-				<!-- Project files -->
 				<TreeView
                     x:Name="ProjectTree"
                     Grid.Row="1"
-                    Margin="4,0,4,4"
+                    Margin="4"
                     BorderThickness="0"
                     DoubleTapped="ProjectTree_DoubleTapped">
 
 					<TreeView.ContextMenu>
-
 						<ContextMenu>
 
 							<MenuItem
@@ -150,7 +153,6 @@
                                 Click="RefreshTree_Click" />
 
 						</ContextMenu>
-
 					</TreeView.ContextMenu>
 
 				</TreeView>
@@ -165,7 +167,6 @@
             Grid.Row="1"
             Grid.Column="1"
             RowDefinitions="Auto,Auto,*">
-
 
 			<!-- TABS -->
 			<Border
@@ -189,69 +190,58 @@
 			</Border>
 
 
-			<!-- FIND BAR -->
+			<!-- FIND -->
 			<Border
                 x:Name="FindBar"
                 Grid.Row="1"
                 IsVisible="False"
+                Padding="8,6"
                 Background="{DynamicResource AxiomPanel}"
                 BorderBrush="{DynamicResource AxiomBorder}"
-                BorderThickness="0,0,0,1"
-                Padding="8,6">
+                BorderThickness="0,0,0,1">
 
 				<Grid
                     ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto">
 
 					<TextBox
                         x:Name="FindBox"
-                        MinWidth="220"
                         PlaceholderText="Find in current file"
-                        KeyDown="FindBox_KeyDown"
-                        TextChanged="FindBox_TextChanged" />
+                        TextChanged="FindBox_TextChanged"
+                        KeyDown="FindBox_KeyDown" />
 
 					<TextBlock
                         x:Name="FindCountText"
                         Grid.Column="1"
-                        MinWidth="70"
+                        Text="0 results"
                         Margin="10,0"
                         VerticalAlignment="Center"
-                        TextAlignment="Center"
-                        Classes="muted"
-                        Text="0 results" />
+                        Classes="muted" />
 
 					<ToggleButton
                         x:Name="FindCaseButton"
                         Grid.Column="2"
                         Content="Aa"
-                        Padding="8,5"
-                        ToolTip.Tip="Match case"
                         Click="FindOption_Click" />
 
 					<ToggleButton
                         x:Name="FindWordButton"
                         Grid.Column="3"
                         Content="Word"
-                        Padding="8,5"
                         Margin="4,0,0,0"
-                        ToolTip.Tip="Match whole word"
                         Click="FindOption_Click" />
 
 					<Button
                         Grid.Column="4"
                         Content="↑"
                         Width="34"
-                        Padding="0"
                         Margin="8,0,0,0"
-                        ToolTip.Tip="Previous match"
                         Click="FindPrevious_Click" />
 
 					<Button
                         Grid.Column="5"
                         Content="↓"
                         Width="34"
-                        Padding="0"
                         Margin="4,0,0,0"
-                        ToolTip.Tip="Next match"
                         Click="FindNext_Click" />
 
 				</Grid>
@@ -259,30 +249,40 @@
 			</Border>
 
 
-			<!-- CODE EDITOR -->
-			<TextBox
+			<!-- REAL CODE EDITOR -->
+			<edit:TextEditor
                 x:Name="EditorBox"
                 Grid.Row="2"
-                AcceptsReturn="True"
-                AcceptsTab="True"
-                TextWrapping="NoWrap"
+
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+
+                IsEnabled="True"
+                IsReadOnly="False"
+                Focusable="True"
+                IsHitTestVisible="True"
+
+                ShowLineNumbers="True"
+                WordWrap="False"
+
                 FontFamily="{DynamicResource AxiomEditorFont}"
                 FontSize="{DynamicResource AxiomEditorFontSize}"
-                Padding="14"
-                BorderThickness="0"
+
                 Background="{DynamicResource EditorBackground}"
                 Foreground="{DynamicResource EditorForeground}"
-                SelectionBrush="{DynamicResource SearchHighlight}"
-                SelectionForegroundBrush="White"
+
+                Padding="8"
+
+                HorizontalScrollBarVisibility="Auto"
+                VerticalScrollBarVisibility="Auto"
+
                 TextChanged="EditorBox_TextChanged"
-                KeyDown="EditorBox_KeyDown"
-                ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                KeyDown="EditorBox_KeyDown" />
 
 		</Grid>
 
 
-		<!-- BOTTOM PANEL -->
+		<!-- BOTTOM -->
 		<Border
             Grid.Row="2"
             Grid.ColumnSpan="2"
@@ -292,10 +292,7 @@
 
 			<Grid RowDefinitions="Auto,*">
 
-
-				<!-- BOTTOM PANEL TABS -->
 				<Border
-                    Grid.Row="0"
                     Background="{DynamicResource AxiomPanel}"
                     BorderBrush="{DynamicResource AxiomBorder}"
                     BorderThickness="0,0,0,1">
@@ -307,37 +304,29 @@
 
 						<Button
                             x:Name="OutputTabButton"
-							Classes="bottomTab"
                             Content="Output"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="10,5"
                             Click="OutputTab_Click" />
 
 						<Button
                             x:Name="ProblemsTabButton"
-							Classes="bottomTab"
                             Content="Problems"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="10,5"
                             Click="ProblemsTab_Click" />
 
 						<Button
                             x:Name="TerminalTabButton"
-							Classes="bottomTab"
                             Content="Terminal"
                             Background="Transparent"
                             BorderThickness="0"
-                            Padding="10,5"
                             Click="TerminalTab_Click" />
 
 						<Button
-                            x:Name="SearchTabButton"
-							Classes="bottomTab"
                             Content="Search"
-                            
-                            Padding="10,5"
+                            Background="Transparent"
+                            BorderThickness="0"
                             Click="SearchTab_Click" />
 
 					</StackPanel>
@@ -345,27 +334,24 @@
 				</Border>
 
 
-				<!-- OUTPUT -->
 				<TextBox
                     x:Name="OutputBox"
                     Grid.Row="1"
                     IsReadOnly="True"
                     AcceptsReturn="True"
                     TextWrapping="NoWrap"
+                    BorderThickness="0"
+                    Padding="10"
                     FontFamily="{DynamicResource AxiomEditorFont}"
                     FontSize="{DynamicResource AxiomEditorFontSize}"
-                    BorderThickness="0"
-                    Padding="12"
                     Background="{DynamicResource EditorBackground}"
                     Foreground="{DynamicResource EditorForeground}"
                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
                     ScrollViewer.VerticalScrollBarVisibility="Auto" />
 
 
-				<!-- PROBLEMS -->
 				<ListBox
                     x:Name="ProblemsList"
-					Classes="bottomTab"
                     Grid.Row="1"
                     IsVisible="False"
                     BorderThickness="0"
@@ -373,48 +359,37 @@
                     DoubleTapped="ProblemsList_DoubleTapped">
 
 					<ListBox.ItemTemplate>
-
 						<DataTemplate x:CompileBindings="False">
 
-							<Border
-                                BorderBrush="{DynamicResource AxiomBorder}"
-                                BorderThickness="0,0,0,1"
-                                Padding="10,7">
+							<Grid
+                                ColumnDefinitions="90,180,80,*"
+                                Margin="8,5">
 
-								<Grid
-                                    ColumnDefinitions="90,180,80,*">
+								<TextBlock
+                                    Text="{Binding Severity}" />
 
-									<TextBlock
-                                        Grid.Column="0"
-                                        Text="{Binding Severity}"
-                                        FontWeight="SemiBold" />
+								<TextBlock
+                                    Grid.Column="1"
+                                    Text="{Binding DisplayFile}" />
 
-									<TextBlock
-                                        Grid.Column="1"
-                                        Text="{Binding DisplayFile}" />
+								<TextBlock
+                                    Grid.Column="2"
+                                    Text="{Binding DisplayLocation}"
+                                    Classes="muted" />
 
-									<TextBlock
-                                        Grid.Column="2"
-                                        Text="{Binding DisplayLocation}"
-                                        Classes="muted" />
+								<TextBlock
+                                    Grid.Column="3"
+                                    Text="{Binding Message}"
+                                    TextWrapping="Wrap" />
 
-									<TextBlock
-                                        Grid.Column="3"
-                                        Text="{Binding Message}"
-                                        TextWrapping="Wrap" />
-
-								</Grid>
-
-							</Border>
+							</Grid>
 
 						</DataTemplate>
-
 					</ListBox.ItemTemplate>
 
 				</ListBox>
 
 
-				<!-- TERMINAL -->
 				<Grid
                     x:Name="TerminalPanel"
                     Grid.Row="1"
@@ -424,24 +399,18 @@
 
 					<TextBox
                         x:Name="TerminalOutput"
-                        Grid.Row="0"
                         IsReadOnly="True"
                         AcceptsReturn="True"
                         TextWrapping="NoWrap"
+                        BorderThickness="0"
+                        Padding="10"
                         FontFamily="{DynamicResource AxiomEditorFont}"
                         FontSize="{DynamicResource AxiomEditorFontSize}"
-                        Padding="10"
-                        BorderThickness="0"
                         Background="{DynamicResource EditorBackground}"
-                        Foreground="{DynamicResource EditorForeground}"
-                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                        ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                        Foreground="{DynamicResource EditorForeground}" />
 
-
-					<!-- terminal command line -->
 					<Border
                         Grid.Row="1"
-                        Background="{DynamicResource AxiomPanel}"
                         BorderBrush="{DynamicResource AxiomBorder}"
                         BorderThickness="0,1,0,0"
                         Padding="6">
@@ -451,8 +420,6 @@
 							<TextBlock
                                 Text="›"
                                 Margin="5,0,8,0"
-                                FontFamily="{DynamicResource AxiomEditorFont}"
-                                FontSize="{DynamicResource AxiomEditorFontSize}"
                                 VerticalAlignment="Center"
                                 Classes="muted" />
 
@@ -460,10 +427,7 @@
                                 x:Name="TerminalInput"
                                 Grid.Column="1"
                                 PlaceholderText="Enter command..."
-                                FontFamily="{DynamicResource AxiomEditorFont}"
-                                FontSize="{DynamicResource AxiomEditorFontSize}"
                                 BorderThickness="0"
-                                Padding="6"
                                 KeyDown="TerminalInput_KeyDown" />
 
 						</Grid>
@@ -473,44 +437,32 @@
 				</Grid>
 
 
-				<!-- PROJECT SEARCH -->
 				<Grid
                     x:Name="ProjectSearchPanel"
                     Grid.Row="1"
                     IsVisible="False"
-                    RowDefinitions="Auto,*"
-                    Background="{DynamicResource EditorBackground}">
+                    RowDefinitions="Auto,*">
 
-					<Border
-                        Grid.Row="0"
-                        Background="{DynamicResource AxiomPanel}"
-                        BorderBrush="{DynamicResource AxiomBorder}"
-                        BorderThickness="0,0,0,1"
-                        Padding="8">
+					<Grid
+                        ColumnDefinitions="*,Auto"
+                        Margin="8">
 
-						<Grid ColumnDefinitions="*,Auto">
+						<TextBox
+                            x:Name="ProjectSearchBox"
+                            PlaceholderText="Search project"
+                            KeyDown="ProjectSearchBox_KeyDown" />
 
-							<TextBox
-                                x:Name="ProjectSearchBox"
-                                PlaceholderText="Search the entire project"
-                                KeyDown="ProjectSearchBox_KeyDown" />
+						<Button
+                            Grid.Column="1"
+                            Content="Search"
+                            Margin="6,0,0,0"
+                            Click="ProjectSearch_Click" />
 
-							<Button
-                                Grid.Column="1"
-                                Content="Search"
-                                Padding="12,6"
-                                Margin="6,0,0,0"
-                                Click="ProjectSearch_Click" />
-
-						</Grid>
-
-					</Border>
+					</Grid>
 
 					<ListBox
                         x:Name="ProjectSearchResults"
                         Grid.Row="1"
-                        BorderThickness="0"
-                        Background="{DynamicResource EditorBackground}"
                         DoubleTapped="ProjectSearchResults_DoubleTapped" />
 
 				</Grid>

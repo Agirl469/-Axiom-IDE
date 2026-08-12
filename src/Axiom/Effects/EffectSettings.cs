@@ -4,7 +4,7 @@ public sealed class EffectSettings
 {
     public bool Enabled { get; set; } = false;
 
-    public string Profile { get; set; } = "Minimal";
+    public string Profile { get; set; } = "Off";
 
     public bool PetalsEnabled { get; set; } = false;
     public bool LeavesEnabled { get; set; }

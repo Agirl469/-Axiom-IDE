@@ -8,6 +8,10 @@
 
 		<FluentTheme />
 
+		<StyleInclude
+            Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+
+
 		<!-- Base window -->
 		<Style Selector="Window">
 			<Setter
@@ -26,7 +30,6 @@
                 Property="FontSize"
                 Value="{DynamicResource AxiomUiFontSize}" />
 		</Style>
-
 
 		<!-- User controls -->
 		<Style Selector="UserControl">
@@ -340,6 +343,24 @@
 		</Style>
 
 
+
+		<!-- Compact badges -->
+		<Style Selector="Border.badge">
+			<Setter Property="Background" Value="{DynamicResource AxiomAccentSoft}" />
+			<Setter Property="CornerRadius" Value="5" />
+			<Setter Property="Padding" Value="7,3" />
+		</Style>
+
+		<Style Selector="TextBlock.badgeText">
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+		</Style>
+
+		<Style Selector="Border.sidebarRule">
+			<Setter Property="Background" Value="{DynamicResource AxiomBorder}" />
+			<Setter Property="Height" Value="1" />
+		</Style>
+
 		<!-- Tooltips -->
 		<Style Selector="ToolTip">
 			<Setter
@@ -371,51 +392,51 @@
 		<!-- UI -->
 		<SolidColorBrush
             x:Key="AxiomBackground"
-            Color="#0D1018" />
+            Color="#0B0E17" />
 
 		<SolidColorBrush
             x:Key="AxiomPanel"
-            Color="#111621" />
+            Color="#101522" />
 
 		<SolidColorBrush
             x:Key="AxiomCard"
-            Color="#151B27" />
+            Color="#151B29" />
 
 		<SolidColorBrush
             x:Key="AxiomControl"
-            Color="#1A2130" />
+            Color="#1B2232" />
 
 		<SolidColorBrush
             x:Key="AxiomControlHover"
-            Color="#222B3D" />
+            Color="#252E42" />
 
 		<SolidColorBrush
             x:Key="AxiomBorder"
-            Color="#273044" />
+            Color="#293248" />
 
 		<SolidColorBrush
             x:Key="AxiomForeground"
-            Color="#ECEEF5" />
+            Color="#F1F2F7" />
 
 		<SolidColorBrush
             x:Key="AxiomMuted"
-            Color="#8F98AA" />
+            Color="#929BB0" />
 
 
 		<!-- Accent -->
 		<SolidColorBrush
             x:Key="AxiomAccent"
-            Color="#8258E8" />
+            Color="#875AF2" />
 
 		<SolidColorBrush
             x:Key="AxiomAccentSoft"
-            Color="#35265D" />
+            Color="#33245C" />
 
 
 		<!-- Editor -->
 		<SolidColorBrush
             x:Key="EditorBackground"
-            Color="#0A0D13" />
+            Color="#090C13" />
 
 		<SolidColorBrush
             x:Key="EditorForeground"

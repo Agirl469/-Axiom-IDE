@@ -1,55 +1,95 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Axiom.Views.StartPageView">
-  <Grid ColumnDefinitions="230,*">
-    <Border Grid.Column="0" Background="#1D1D20" BorderBrush="#303036" BorderThickness="0,0,1,0">
-      <StackPanel Margin="18,22" Spacing="8">
-        <TextBlock Text="AXIOM" FontSize="20" FontWeight="SemiBold" Margin="6,0,0,18" />
-        <Button Content="Home" HorizontalContentAlignment="Left" />
-        <Button Content="New Project" HorizontalContentAlignment="Left" Click="NewProject_Click" />
-        <Button Content="Open Project" HorizontalContentAlignment="Left" Click="OpenProject_Click" />
-        <Button Content="Toolchains" HorizontalContentAlignment="Left" Click="Toolchains_Click" />
-        <Button Content="Settings" HorizontalContentAlignment="Left" Click="Settings_Click" />
-      </StackPanel>
-    </Border>
+	<Grid ColumnDefinitions="210,*" Background="{DynamicResource AxiomBackground}">
+		<Border Grid.Column="0" Background="{DynamicResource AxiomPanel}" BorderBrush="{DynamicResource AxiomBorder}" BorderThickness="0,0,1,0">
+			<Grid RowDefinitions="Auto,*,Auto" Margin="14,18">
+				<StackPanel Spacing="3" Margin="8,0,8,20">
+					<TextBlock Text="AXIOM" FontSize="19" FontWeight="Bold" />
+					<TextBlock Text="Developer workspace" FontSize="11" Classes="muted" />
+				</StackPanel>
 
-    <ScrollViewer Grid.Column="1">
-      <StackPanel Width="760" HorizontalAlignment="Center" Margin="40,56" Spacing="22">
-        <StackPanel Spacing="4">
-          <TextBlock Text="Start" FontSize="32" FontWeight="SemiBold" />
-          <TextBlock Text="Open an Axiom project or start something new." FontSize="15" Classes="muted" />
-        </StackPanel>
+				<StackPanel Grid.Row="1" Spacing="3">
+					<Button Classes="nav" Content="⌂   Home" Background="{DynamicResource AxiomAccentSoft}" HorizontalContentAlignment="Left" />
+					<Button Classes="nav" Content="＋  New Project" HorizontalContentAlignment="Left" Click="NewProject_Click" />
+					<Button Classes="nav" Content="□   Open Project" HorizontalContentAlignment="Left" Click="OpenProject_Click" />
+					<Button Classes="nav" Content="⌘   Toolchains" HorizontalContentAlignment="Left" Click="Toolchains_Click" />
+					<Button Classes="nav" Content="⚙   Settings" HorizontalContentAlignment="Left" Click="Settings_Click" />
+				</StackPanel>
 
-        <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-          <Border Grid.Column="0" Classes="panel" Padding="20">
-            <StackPanel Spacing="12">
-              <TextBlock Text="Open project" FontSize="18" FontWeight="SemiBold" />
-              <TextBlock Text="Open a .axn project. Plain folders can still be opened from the File menu."
-                         TextWrapping="Wrap" Classes="muted" />
-              <Button Content="Open .axn project..." Classes="primary" HorizontalAlignment="Left" Click="OpenProject_Click" />
-            </StackPanel>
-          </Border>
+				<StackPanel Grid.Row="2" Spacing="8" Margin="8,12,8,4">
+					<Border Classes="sidebarRule" />
+					<TextBlock Text="AXIOM IDE" FontSize="11" Classes="muted" />
+					<TextBlock Text="Local • Cross-platform • No AI required" FontSize="10" Classes="muted" TextWrapping="Wrap" />
+				</StackPanel>
+			</Grid>
+		</Border>
 
-          <Border Grid.Column="1" Classes="panel" Padding="20">
-            <StackPanel Spacing="12">
-              <TextBlock Text="Development tools" FontSize="18" FontWeight="SemiBold" />
-              <TextBlock Text="Check which compilers, SDKs and build tools are available on this machine."
-                         TextWrapping="Wrap" Classes="muted" />
-              <Button Content="Manage toolchains" HorizontalAlignment="Left" Click="Toolchains_Click" />
-            </StackPanel>
-          </Border>
-        </Grid>
+		<ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+			<StackPanel MaxWidth="920" HorizontalAlignment="Center" Margin="38,42" Spacing="18">
+				<StackPanel Spacing="5" Margin="0,0,0,6">
+					<TextBlock Text="Welcome back" FontSize="28" FontWeight="SemiBold" />
+					<TextBlock Text="Open a project, create something new, or manage your development environment." FontSize="14" Classes="muted" />
+				</StackPanel>
 
-        <Border Classes="panel" Padding="20">
-          <StackPanel Spacing="10">
-            <TextBlock Text="Starter goals" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="• Fast project opening and normal file editing" />
-            <TextBlock Text="• Axiom-native C++, C#, Rust and Python projects" />
-            <TextBlock Text="• Language servers and debugger adapters later" />
-            <TextBlock Text="• No account requirement, AI service, or telemetry layer" />
-          </StackPanel>
-        </Border>
-      </StackPanel>
-    </ScrollViewer>
-  </Grid>
+				<Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+					<Border Grid.Column="0" Classes="card" Padding="20">
+						<Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+							<StackPanel Spacing="6">
+								<TextBlock Text="Open project" FontSize="18" FontWeight="SemiBold" />
+								<TextBlock Text="Open an Axiom project, Visual Studio solution, or existing project folder." TextWrapping="Wrap" Classes="muted" />
+							</StackPanel>
+							<TextBlock Grid.Column="1" Text="▣" FontSize="38" Foreground="{DynamicResource AxiomAccent}" Opacity="0.75" Margin="16,0,4,0" />
+							<Button Grid.Row="2" Content="Open project" Classes="primary" HorizontalAlignment="Left" Margin="0,18,0,0" Click="OpenProject_Click" />
+						</Grid>
+					</Border>
+
+					<Border Grid.Column="1" Classes="card" Padding="20">
+						<Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto">
+							<StackPanel Spacing="6">
+								<TextBlock Text="Development tools" FontSize="18" FontWeight="SemiBold" />
+								<TextBlock Text="Scan compilers, SDKs, runtimes and build tools available on this machine." TextWrapping="Wrap" Classes="muted" />
+							</StackPanel>
+							<TextBlock Grid.Column="1" Text="⌘" FontSize="38" Foreground="{DynamicResource AxiomAccent}" Opacity="0.65" Margin="16,0,4,0" />
+							<Button Grid.Row="2" Content="Manage toolchains" HorizontalAlignment="Left" Margin="0,18,0,0" Click="Toolchains_Click" />
+						</Grid>
+					</Border>
+				</Grid>
+
+				<Border Classes="card" Padding="20">
+					<Grid ColumnDefinitions="*,Auto">
+						<StackPanel Spacing="11">
+							<TextBlock Text="Built for your workflow" FontSize="17" FontWeight="SemiBold" />
+							<TextBlock Text="✓  Fast project opening and normal file editing" />
+							<TextBlock Text="✓  Native C++, C#, Rust, Python and Lua workflows" />
+							<TextBlock Text="✓  Custom themes, fonts, keybinds and optional effects" />
+							<TextBlock Text="✓  Lua plugins with explicit permissions" />
+						</StackPanel>
+						<Border Grid.Column="1" Classes="badge" VerticalAlignment="Top" Margin="18,0,0,0">
+							<TextBlock Classes="badgeText" Text="CUSTOMIZABLE" />
+						</Border>
+					</Grid>
+				</Border>
+
+				<Grid ColumnDefinitions="2*,*" ColumnSpacing="14">
+					<Border Grid.Column="0" Classes="card" Padding="18">
+						<StackPanel Spacing="12">
+							<TextBlock Text="Quick actions" FontSize="16" FontWeight="SemiBold" />
+							<StackPanel Orientation="Horizontal" Spacing="8">
+								<Button Content="＋ New project" Click="NewProject_Click" />
+								<Button Content="□ Open project" Click="OpenProject_Click" />
+								<Button Content="⌘ Toolchains" Click="Toolchains_Click" />
+							</StackPanel>
+						</StackPanel>
+					</Border>
+					<Border Grid.Column="1" Classes="card" Padding="18">
+						<StackPanel Spacing="7">
+							<TextBlock Text="Tip" FontSize="16" FontWeight="SemiBold" />
+							<TextBlock Text="Effects are off by default. Enable them from Settings → Effects when you want them." TextWrapping="Wrap" Classes="muted" />
+						</StackPanel>
+					</Border>
+				</Grid>
+			</StackPanel>
+		</ScrollViewer>
+	</Grid>
 </UserControl>
